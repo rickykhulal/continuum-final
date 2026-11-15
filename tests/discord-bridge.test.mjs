@@ -7,7 +7,7 @@ import { decodeCommunityImage, MAX_IMAGE_BYTES } from '../server/community-image
 import { loadCommunityEnv } from '../server/community-env.mjs';
 import { createCommunityStore } from '../server/community-store.mjs';
 import { sendDiscordReport } from '../server/community-integrations.mjs';
-import { BridgeError, createGeminiAnalyzer, explicitCoordinates, resolveReportLocation, downloadReportImage, forwardDiscordReport, createDiscordMessageHandler } from '../scripts/discord-bridge.mjs';
+import { BridgeError, createGroqAnalyzer, createGeminiAnalyzer, explicitCoordinates, resolveReportLocation, downloadReportImage, forwardDiscordReport, createDiscordMessageHandler } from '../scripts/discord-bridge.mjs';
 
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
 const temporary = fn => {
@@ -66,16 +66,17 @@ test('bot-token delivery supports web cross-posts without a webhook', async () =
   assert.equal(request.headers.Authorization, 'Bot fixture');
 });
 
-test('Gemini receives text and image and returns only classification plus location, never invented coordinates', async () => {
-  let parts;
-  const analyze = createGeminiAnalyzer({ generate: async input => { parts = input; return JSON.stringify({ isFireReport: true, locationName: 'Biratnagar, Nepal', lat: 12, lon: 34, verificationStatus: 'satellite_confirmed' }); } });
+test('Groq receives text and image and returns only classification plus location, never invented coordinates', async () => {
+  let received;
+  const analyze = createGroqAnalyzer({ generate: async input => { received = input; return JSON.stringify({ isFireReport: true, locationName: 'Biratnagar, Nepal', lat: 12, lon: 34, verificationStatus: 'satellite_confirmed' }); } });
   assert.deepEqual(await analyze({ content: 'Smoke', imageBase64: png }), { isFireReport: true, locationName: 'Biratnagar, Nepal' });
-  assert.match(parts[0].text, /Smoke/); assert.equal(parts[1].inlineData.mimeType, 'image/png');
+  assert.equal(received.content, 'Smoke');
+  assert.equal(received.image.mimeType, 'image/png');
 });
 
-test('Gemini malformed or unavailable responses fail closed without leaking upstream errors', async () => {
+test('Groq malformed or unavailable responses fail closed without leaking upstream errors', async () => {
   for (const generate of [async () => 'not JSON', async () => '{"isFireReport":"true","locationName":null}', async () => { throw new Error('private upstream details'); }]) {
-    await assert.rejects(createGeminiAnalyzer({ generate })({ content: 'Fixture' }), error => error instanceof BridgeError && !error.message.includes('private upstream'));
+    await assert.rejects(createGroqAnalyzer({ generate })({ content: 'Fixture' }), error => error instanceof BridgeError && !error.message.includes('private upstream'));
   }
 });
 

@@ -107,8 +107,8 @@ or configure the two services manually using [the Environment-tab instructions](
 | Discord worker | `npm ci --omit=dev` | `npm run discord:bot` |
 
 Set `APP_DATA_PATH=/var/data/continuum` on the web service, with its disk mounted at `/var/data`.
-Configure actual Discord/Gemini credentials in Render's Environment tab, following `.env.example`;
-never upload `.env`. Render supplies `PORT`. The default Gemini model is `gemini-3.8-flash`.
+Configure actual Discord/Groq credentials in Render's Environment tab, following `.env.example`;
+never upload `.env`. Render supplies `PORT`. The default Groq model is `llama-3.1-8b-instant`.
 The worker's `COMMUNITY_API_URL` must point to the web service's HTTPS URL ending in `/api/v1`.
 One API process writes the JSON store, and one bot process handles interactions. A free web-only
 deployment has an ephemeral filesystem and does not provide this full persistent Community setup.

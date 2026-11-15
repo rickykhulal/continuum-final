@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { pathToFileURL } from 'node:url';
 import { loadCommunityEnv } from '../server/community-env.mjs';
-import { BridgeError, createGeminiAnalyzer, createGeminiLocationParser, resolveModalLocation, forwardDiscordReport } from './discord-bridge.mjs';
+import { BridgeError, createGroqAnalyzer, createGroqLocationParser, resolveModalLocation, forwardDiscordReport } from './discord-bridge.mjs';
 import { registerReportCommand, createDiscordInteractionHandler, attachReportInteractions } from './discord-interactions.mjs';
 
 async function selectChannel(client, env) {
@@ -25,9 +25,19 @@ async function selectChannel(client, env) {
 
 export async function runBot({ checkOnly = false, env = process.env } = {}) {
   loadCommunityEnv(env);
-  if (!env.DISCORD_BOT_TOKEN || !env.GEMINI_API_KEY || !env.DISCORD_SYNC_SECRET) throw new BridgeError('Set DISCORD_BOT_TOKEN, GEMINI_API_KEY and DISCORD_SYNC_SECRET in the server environment or ignored local .env.');
-  const analyze = createGeminiAnalyzer({ apiKey: env.GEMINI_API_KEY, modelName: env.GEMINI_MODEL || 'gemini-3.8-flash' });
-  const parseLocation = createGeminiLocationParser({ apiKey: env.GEMINI_API_KEY, modelName: env.GEMINI_MODEL || 'gemini-3.8-flash' });
+  const apiKey = env.GROQ_API_KEY || env.GEMINI_API_KEY;
+  if (!env.DISCORD_BOT_TOKEN || !apiKey || !env.DISCORD_SYNC_SECRET) throw new BridgeError('Set DISCORD_BOT_TOKEN, GROQ_API_KEY and DISCORD_SYNC_SECRET in the server environment or ignored local .env.');
+  const modelName = env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const analyze = createGroqAnalyzer({ apiKey, modelName });
+  const parseLocation = createGroqLocationParser({ apiKey, modelName });
+  const safeParseLocation = async (input) => {
+    try {
+      return await parseLocation(input);
+    } catch (error) {
+      if (error instanceof BridgeError) throw error;
+      throw new BridgeError('AI analysis unavailable. Please check the API key.');
+    }
+  };
   const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { timeout: 15000, retries: 1 } });
   client.on(Events.Error, () => console.error('Discord connection error. Check credentials, permissions and network.'));
   client.on(Events.ShardError, () => console.error('Discord gateway unavailable. Reconnecting.'));
@@ -49,17 +59,17 @@ export async function runBot({ checkOnly = false, env = process.env } = {}) {
     try {
       // A harmless 1px fixture verifies image input too; it is never posted to either feed.
       const imageBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
-      const [discord, gemini] = await Promise.allSettled([connect(), Promise.all([
+      const [discord, groq] = await Promise.allSettled([connect(), Promise.all([
         analyze({ content: 'Smoke reported near Biratnagar, Nepal. This is a connectivity test only; the attached pixel is a test image.', imageBase64 }),
-        resolveModalLocation('Biratnagar Nepal', { parseLocation }),
+        resolveModalLocation('Biratnagar Nepal', { parseLocation: safeParseLocation }),
       ])]);
       const report = {
         discord: discord.status === 'fulfilled' ? { status: 'verified', channelId: discord.value.id } : { status: 'blocked', reason: discord.reason.message },
-        gemini: gemini.status === 'fulfilled' ? { status: 'verified', model: env.GEMINI_MODEL || 'gemini-3.8-flash', inputs: ['text', 'image', 'modal location'], location: gemini.value[1] } : { status: 'blocked', reason: gemini.reason.message },
+        groq: groq.status === 'fulfilled' ? { status: 'verified', model: modelName, inputs: ['text', 'modal location'], location: groq.value[1] } : { status: 'blocked', reason: groq.reason.message },
         messagesSent: 0,
       };
       console.log(JSON.stringify(report, null, 2));
-      return discord.status === 'fulfilled' && gemini.status === 'fulfilled';
+      return discord.status === 'fulfilled' && groq.status === 'fulfilled';
     } finally { client.destroy(); }
   }
   let channel;
@@ -67,7 +77,7 @@ export async function runBot({ checkOnly = false, env = process.env } = {}) {
   try { await registerReportCommand(channel.guild.commands); }
   catch { client.destroy(); throw new BridgeError('Could not register /setup-report. Invite the bot with bot and applications.commands scopes.'); }
   const handler = createDiscordInteractionHandler({ guildId: channel.guildId,
-    parseLocation, log: text => console.log(text),
+    parseLocation: safeParseLocation, log: text => console.log(text),
     forward: payload => forwardDiscordReport(payload, { apiUrl: env.COMMUNITY_API_URL || 'http://127.0.0.1:8787/api/v1', secret: env.DISCORD_SYNC_SECRET }) });
   attachReportInteractions(client, handler);
   console.log(`Continuum /setup-report registered in server ${channel.guildId}. Interaction-only reporting is ready; ordinary messages are ignored.`);

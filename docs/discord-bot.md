@@ -1,6 +1,6 @@
 # Community Discord reporting
 
-Requires Node ≥20.12 and the installed `discord.js` and `@google/generative-ai` packages.
+Requires Node ≥20.12 and the installed `discord.js` and `openai` packages.
 The bot uses an administrator's `/setup-report` command, a public button and a private modal
 submission. Ordinary channel messages are ignored. Only the Guilds gateway intent is requested;
 Message Content Intent is unnecessary and can be disabled in the Discord Developer Portal.
@@ -10,14 +10,14 @@ Message Content Intent is unnecessary and can be disabled in the Discord Develop
 1. Invite the bot with **bot** and **applications.commands** scopes. Grant View Channel, Send
    Messages, Read Message History, Attach Files and Embed Links in the configured channel.
    Administrators alone can run `/setup-report`; ordinary members can use its button.
-2. Set `DISCORD_BOT_TOKEN`, `GEMINI_API_KEY` and the same `DISCORD_SYNC_SECRET` for both API and
+2. Set `DISCORD_BOT_TOKEN`, `GROQ_API_KEY` and the same `DISCORD_SYNC_SECRET` for both API and
    bot in their environment or ignored `.env`. Never place credentials in source or client-side
    `VITE_` settings. Exported environment values take precedence over `.env`.
 3. Set `DISCORD_REPORT_CHANNEL_ID` to your server text channel. It determines the server where
    the command is registered and the destination for outbound web reports. If omitted, startup
    requires exactly one `#fire-reports` channel, optionally restricted by `DISCORD_GUILD_ID`.
    `DISCORD_REPORT_CHANNEL_NAME` changes that fallback name.
-4. `GEMINI_MODEL` defaults to `gemini-3.8-flash`. `COMMUNITY_API_URL` defaults to
+4. `GROQ_MODEL` defaults to `llama-3.1-8b-instant`. `COMMUNITY_API_URL` defaults to
    `http://127.0.0.1:8787/api/v1`; use HTTPS for a remote API. The API must use the same sync secret.
 
 In separate terminals:
@@ -29,7 +29,7 @@ npm run discord:bot
 ```
 
 Startup creates or updates only the guild's `setup-report` command; unrelated commands remain.
-`npm run discord:check` verifies bot login, channel permissions, Gemini text/image input and
+`npm run discord:check` verifies bot login, channel permissions, Groq text/image input and
 modal location resolution. It sends no Discord messages and creates no community posts.
 
 ## Test the report form
@@ -53,7 +53,7 @@ regular community feed. Automated tests instead use an isolated database and wea
 
 ## Location, images and verification
 
-- Explicit latitude/longitude bypass Gemini. Named locations use Gemini to extract comma-separated
+- Explicit latitude/longitude bypass Groq. Named locations use Groq to extract comma-separated
   place/country components and Open-Meteo Geocoding to obtain coordinates. A unique result is
   required; ambiguous or unresolved names produce a private error inviting a more specific name
   or coordinates. Coordinates are never invented from imagery.
@@ -120,8 +120,8 @@ Set these separately on each service, then choose **Save, rebuild, and deploy**:
 | `DISCORD_REPORT_CHANNEL_ID` | Your target channel ID | The same channel ID, selecting the command's server |
 | `DISCORD_SYNC_SECRET` | A newly generated random shared secret | Exactly the same value |
 | `DISCORD_WEBHOOK_URL` | Optional actual Discord webhook URL; leave absent to use bot delivery | Not needed |
-| `GEMINI_API_KEY` | Not needed by the web/API verification pipeline | Your Google Gemini API key |
-| `GEMINI_MODEL` | Not needed by the web/API verification pipeline | `gemini-3.8-flash` |
+| `GROQ_API_KEY` | Not needed by the web/API verification pipeline | Your Groq API key |
+| `GROQ_MODEL` | Not needed by the web/API verification pipeline | `llama-3.1-8b-instant` |
 | `COMMUNITY_API_URL` | Not needed | Full web URL ending in `/api/v1`, e.g. `https://your-web-service.onrender.com/api/v1` |
 
 Keep **PORT unset** in the dashboard; Render supplies it. Leave **DATA_BUNDLE_VERSION unset** so
