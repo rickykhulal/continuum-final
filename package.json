@@ -9,6 +9,7 @@
   "description": "Continuum — a sensor-independent burning activity record and orbital fire observatory.",
   "scripts": {
     "dev": "vite",
+    "start:bot": "node bot-host.mjs",
     "discord:bot": "node scripts/discord-bot.mjs",
     "discord:check": "node scripts/discord-bot.mjs --check",
     "start": "node server/api.mjs",
