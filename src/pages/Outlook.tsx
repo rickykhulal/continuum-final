@@ -4,6 +4,7 @@ import { analogDeparture, climateSourceFor, notableSeasons, recordsInRange, seas
 import { loadWeather, stressBand, type WeatherContext } from '../lib/weather';
 import { Badge, ChartTable, Panel, PageHeader, Stat, Empty } from '../components/ui';
 import { SeasonDial, TwinChart } from '../components/charts';
+import { FutureRiskCalendar } from '../components/FutureRiskCalendar';
 import { MONTHS, longDate, nf, pct, riskColor, ordinal } from '../lib/format';
 
 function WeatherStrip({ weather }: { weather: WeatherContext }) {
@@ -182,9 +183,9 @@ export function Outlook() {
   return (
     <div className="page outlook-page">
       <PageHeader
-        eyebrow="Predict the future · analog + fire weather"
-        title="Predict the future — with the uncertainty left in."
-        intro="The record is the memory. Analog seasons are the prior. NASA POWER fire weather is the present condition. Together they produce a conditional outlook you can act on — never an ignition forecast or an order."
+        eyebrow="Predict the future · seasonal intelligence"
+        title="Predictive Risk Dashboard"
+        intro="See the next 30 days through the region’s historical fire patterns. Explore seasonal risk, seven-day forecast winds and the evidence behind each day, then compare analog seasons and the four-week outlook."
         chips={
           <>
             <Badge tone="default">{region.name}</Badge>
@@ -202,6 +203,8 @@ export function Outlook() {
           </>
         }
       />
+
+      <FutureRiskCalendar />
 
       <div className="atlas-kpi-bar" role="region" aria-label="Key outlook metrics">
         <div className="atlas-kpi-card">

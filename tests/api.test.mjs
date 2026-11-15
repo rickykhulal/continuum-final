@@ -5,12 +5,14 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.API_TEST_PORT || 4191);
 const BASE = `http://127.0.0.1:${PORT}`;
 let child;
+const runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'continuum-api-contract-'));
 
 async function waitReady() {
   const deadline = Date.now() + 30000;
@@ -31,13 +33,16 @@ before(async () => {
   }
   child = spawn(process.execPath, [path.join(ROOT, 'server', 'api.mjs')], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(PORT), API_RATE_LIMITS: 'classA:120/min;classB:60/min;classC:200/min' },
+    env: { ...process.env, PORT: String(PORT), APP_DATA_PATH: runtime, DISCORD_WEBHOOK_URL: '', DISCORD_SYNC_SECRET: '', DISCORD_BOT_TOKEN: '', API_RATE_LIMITS: 'classA:120/min;classB:60/min;classC:200/min' },
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   await waitReady();
 });
 
-after(() => child?.kill());
+after(async () => {
+  if (child && child.exitCode === null) await new Promise(resolve => { child.once('exit', resolve); child.kill(); });
+  fs.rmSync(runtime, { recursive: true, force: true });
+});
 
 const post = async (sub, body) => {
   const res = await fetch(`${BASE}/api/v1${sub}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -58,6 +63,22 @@ test('every response carries the version envelope', async () => {
   }
   assert.equal(json.data_through, JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'data', 'snapshot.json'), 'utf8')).windowEnd);
   assert.ok(json.provisional_from >= json.start, 'provisional_from is a date inside or after the range');
+});
+
+test('GET outlook uses region_id and returns different regional analog records', async () => {
+  const get = async id => {
+    const response = await fetch(`${BASE}/api/v1/outlook?region_id=${id}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const nepal = await get('nepal'), california = await get('california');
+  assert.equal(nepal.region_id, 'nepal'); assert.equal(california.region_id, 'california');
+  assert.ok(nepal.analogs.length > 0); assert.ok(california.analogs.length > 0);
+  assert.notDeepEqual(nepal.analogs, california.analogs);
+  const spec = await (await fetch(`${BASE}/openapi.json`)).json();
+  assert.ok(spec.paths['/outlook'].get.parameters.some(p => p.name === 'region_id'));
+  const schema = spec.paths['/community/vote'].post.requestBody.content['application/json'].schema;
+  assert.deepEqual(schema.properties.action.enum, ['verify']); assert.equal(schema.oneOf.length, 2);
 });
 
 test('the same area resolved three ways returns the same record', async () => {
@@ -158,6 +179,11 @@ test('openapi documents every route the server actually answers', async () => {
   for (const p of Object.keys(doc.paths)) {
     const isGet = Boolean(doc.paths[p].get);
     const res = isGet ? await fetch(`${BASE}/api/v1${p}`) : await fetch(`${BASE}/api/v1${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ region_id: 'chilecito' }) });
+    if (p === '/community/discord-sync') {
+      assert.equal(res.status, 503, 'Discord sync is explicitly disabled without its server secret');
+      assert.equal((await res.json()).error.code, 'DISCORD_NOT_CONFIGURED');
+      continue;
+    }
     assert.ok(res.status < 500, `${p} → ${res.status}`);
     if (!isGet) await res.text().catch(() => '');
   }

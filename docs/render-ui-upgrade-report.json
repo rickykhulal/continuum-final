@@ -1,0 +1,86 @@
+{
+  "origin": "https://continuum-6ofw.onrender.com",
+  "commit": "eedbe289beddd806e95535cbd5774990447758d8",
+  "expected_assets": [
+    {
+      "path": "/assets/index-kS2T6-oN.js",
+      "sha256": "88834e57abd90f883576d84914018506571a3c4b5fe8d3f1362c57dc171cd9a7"
+    },
+    {
+      "path": "/assets/three-C1NS2VeE.js",
+      "sha256": "3434cde41364d6afbcf26a9b27053c6333ed5598c7a00a1ff7ce371f735dce83"
+    },
+    {
+      "path": "/assets/index-Bt94ebIN.css",
+      "sha256": "bc87e0cb375ad0ede1d6b871237d49f8fef29d79f0d9545a8797aaea944df889"
+    }
+  ],
+  "attempts": [
+    {
+      "checked_at": "2026-11-15T09:16:03.762Z",
+      "root_status": 200,
+      "health_status": 200,
+      "ready_status": 200,
+      "served_assets": [
+        "/assets/index-kS2T6-oN.js",
+        "/assets/three-C1NS2VeE.js",
+        "/assets/index-Bt94ebIN.css"
+      ],
+      "health": {
+        "method_version": "continuum-harmonize-v1",
+        "bundle_version": "continuum-2026-11-14-58d98f95f252",
+        "data_through": "2026-11-14",
+        "provisional_from": "2026-11-15",
+        "status": "ok"
+      },
+      "integrity": {
+        "ok": true,
+        "bad": [],
+        "files": 20
+      },
+      "assets": [
+        {
+          "path": "/assets/index-kS2T6-oN.js",
+          "linked": true,
+          "status": 200,
+          "sha256": "88834e57abd90f883576d84914018506571a3c4b5fe8d3f1362c57dc171cd9a7",
+          "matches_build": true
+        },
+        {
+          "path": "/assets/three-C1NS2VeE.js",
+          "linked": true,
+          "status": 200,
+          "sha256": "3434cde41364d6afbcf26a9b27053c6333ed5598c7a00a1ff7ce371f735dce83",
+          "matches_build": true
+        },
+        {
+          "path": "/assets/index-Bt94ebIN.css",
+          "linked": true,
+          "status": 200,
+          "sha256": "bc87e0cb375ad0ede1d6b871237d49f8fef29d79f0d9545a8797aaea944df889",
+          "matches_build": true
+        }
+      ],
+      "asset_matches_build": true
+    }
+  ],
+  "verified": true,
+  "status": "verified",
+  "verification_method": "Remote main SHA verified by git ls-remote; live HTML references the approved build assets, SHA-256 hashes match, health and readiness HTTP 200 with bundle integrity ok. Render dashboard state not queried.",
+  "canonical_root": {
+    "checked_at": "2026-11-15T09:17:36.480Z",
+    "root_status": 200,
+    "expected_assets_linked": true
+  },
+  "publication": {
+    "status": "verified",
+    "branch": "main",
+    "remote_commit": "eedbe289beddd806e95535cbd5774990447758d8",
+    "push_exit_code": 0
+  },
+  "github_actions": {
+    "status": "in_progress",
+    "url": "https://github.com/rickykhulal/continuum/actions/runs/43698332740"
+  },
+  "video_rendered": false
+}

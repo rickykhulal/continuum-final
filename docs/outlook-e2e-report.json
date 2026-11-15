@@ -1,0 +1,455 @@
+{
+  "status": "verified",
+  "fixture": "Peak-season date and Open-Meteo fixtures for threshold/failure tests; final three region checks use the real current date and no provider interception. Archive counts always come from the shipped file.",
+  "startDate": "2026-08-15",
+  "pass": 34,
+  "total": 34,
+  "results": [
+    {
+      "name": "Thirty distinct future dates start today, independent of the fire snapshot",
+      "pass": true,
+      "detail": [
+        "2026-08-15",
+        "2026-08-16",
+        "2026-08-17",
+        "2026-08-18",
+        "2026-08-19",
+        "2026-08-20",
+        "2026-08-21",
+        "2026-08-22",
+        "2026-08-23",
+        "2026-08-24",
+        "2026-08-25",
+        "2026-08-26",
+        "2026-08-27",
+        "2026-08-28",
+        "2026-08-29",
+        "2026-08-30",
+        "2026-08-31",
+        "2026-09-01",
+        "2026-09-02",
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-05",
+        "2026-09-06",
+        "2026-09-07",
+        "2026-09-08",
+        "2026-09-09",
+        "2026-09-10",
+        "2026-09-11",
+        "2026-09-12",
+        "2026-09-13"
+      ]
+    },
+    {
+      "name": "High seasonal activity plus 25 km/h forecast becomes Critical",
+      "pass": true,
+      "detail": {
+        "date": "2026-08-15",
+        "risk": "critical",
+        "label": "15 August 2026: Critical risk. Expected 32.1 sensor detections. Forecast wind 25.0 km/h."
+      }
+    },
+    {
+      "name": "Day 8 onward uses climatology with no invented forecast",
+      "pass": true,
+      "detail": [
+        {
+          "date": "2026-08-22",
+          "risk": "moderate",
+          "label": "22 August 2026: Moderate risk. Expected 4.8 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-23",
+          "risk": "moderate",
+          "label": "23 August 2026: Moderate risk. Expected 3.5 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-24",
+          "risk": "low",
+          "label": "24 August 2026: Low risk. Expected 2.9 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-25",
+          "risk": "moderate",
+          "label": "25 August 2026: Moderate risk. Expected 3.0 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-26",
+          "risk": "moderate",
+          "label": "26 August 2026: Moderate risk. Expected 5.9 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-27",
+          "risk": "moderate",
+          "label": "27 August 2026: Moderate risk. Expected 4.3 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-28",
+          "risk": "moderate",
+          "label": "28 August 2026: Moderate risk. Expected 3.7 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-29",
+          "risk": "low",
+          "label": "29 August 2026: Low risk. Expected 2.1 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-30",
+          "risk": "moderate",
+          "label": "30 August 2026: Moderate risk. Expected 3.9 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-08-31",
+          "risk": "low",
+          "label": "31 August 2026: Low risk. Expected 1.6 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-01",
+          "risk": "moderate",
+          "label": "1 September 2026: Moderate risk. Expected 3.0 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-02",
+          "risk": "moderate",
+          "label": "2 September 2026: Moderate risk. Expected 4.0 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-03",
+          "risk": "moderate",
+          "label": "3 September 2026: Moderate risk. Expected 3.8 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-04",
+          "risk": "moderate",
+          "label": "4 September 2026: Moderate risk. Expected 3.0 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-05",
+          "risk": "low",
+          "label": "5 September 2026: Low risk. Expected 1.9 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-06",
+          "risk": "moderate",
+          "label": "6 September 2026: Moderate risk. Expected 4.0 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-07",
+          "risk": "low",
+          "label": "7 September 2026: Low risk. Expected 2.6 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-08",
+          "risk": "low",
+          "label": "8 September 2026: Low risk. Expected 2.3 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-09",
+          "risk": "low",
+          "label": "9 September 2026: Low risk. Expected 1.8 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-10",
+          "risk": "low",
+          "label": "10 September 2026: Low risk. Expected 1.2 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-11",
+          "risk": "low",
+          "label": "11 September 2026: Low risk. Expected 2.7 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-12",
+          "risk": "moderate",
+          "label": "12 September 2026: Moderate risk. Expected 3.1 sensor detections. Climatology only; wind unavailable."
+        },
+        {
+          "date": "2026-09-13",
+          "risk": "low",
+          "label": "13 September 2026: Low risk. Expected 2.2 sensor detections. Climatology only; wind unavailable."
+        }
+      ]
+    },
+    {
+      "name": "Open-Meteo request preserves coordinates and seven-day units",
+      "pass": true,
+      "detail": {
+        "latitude": -29.16,
+        "longitude": -67.5,
+        "days": "7",
+        "units": "kmh"
+      }
+    },
+    {
+      "name": "Explanation includes daily mean, historical P90, archive samples and wind from North",
+      "pass": true,
+      "detail": "Why this day?15 August 2026Critical riskThis date is in the highest part of the region’s historical seasonal cycle, with strong forecast winds that may support fire spread.Expected sensor detections32.1This date’s historical P9032.2Years with activity15 / 2560% of this calendar date’s 25 observed archive samples contain fire activity. This is record frequency, not an ignition probability.Forecast wind · Open-Meteo25.0 km/hDaily maximum at 10 m. Dominant direction: from N (0°)."
+    },
+    {
+      "name": "Calendar and historical insights precede preserved analog and four-week features",
+      "pass": true,
+      "detail": [
+        "30-Day Future Fire Risk Calendar",
+        "Historical Pattern Insights",
+        "The decision this outlook supports",
+        "Season clock",
+        "Fire Twin",
+        "Fire weather, from real NASA POWER data",
+        "The outlook, in words",
+        "The biggest seasons in this record"
+      ]
+    },
+    {
+      "name": "Clicking a day updates the detail and states the wind horizon",
+      "pass": true
+    },
+    {
+      "name": "Keyboard arrows move focus and update the selected day",
+      "pass": true
+    },
+    {
+      "name": "Reduced motion stops the Critical pulse",
+      "pass": true
+    },
+    {
+      "name": "Mobile calendar fits the viewport and retains 30 named controls",
+      "pass": true
+    },
+    {
+      "name": "Light theme keeps explicit risk labels and separate palette",
+      "pass": true
+    },
+    {
+      "name": "Failed forecast degrades to climatology and removes Critical without clearing the calendar",
+      "pass": true
+    },
+    {
+      "name": "Expired forecast dates are rejected with an explicit notice",
+      "pass": true
+    },
+    {
+      "name": "Retry recovers the forecast and risk classification",
+      "pass": true
+    },
+    {
+      "name": "Change area → nepal recomputes all 30 colours, mean, P90 and archive insights",
+      "pass": true,
+      "detail": {
+        "id": "nepal",
+        "risks": [
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low"
+        ],
+        "mean": "0.7",
+        "p90": "2.6",
+        "insights": "Nepal · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is April, averaging 24,182 archived sensor detections per complete month across 25 years.August had observed fire activity in 20 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded.",
+        "method": "How this prediction is calculatedThe model reads only the selected area’s entry in archive_daily.json and groups observed counts by calendar day, keeping leap day separate. It averages prior years and calculates each day’s historical 90th percentile. The current year is held out. Colours compare the expected count with the mean (129.8) and P90 (406.2) of the seasonal daily averages.Training: 2000-11-01 to 2025-12-31 · 9,192 observed days. Source ID: nepal. Counts sum the published sensors (MODIS, VIIRS S-NPP, VIIRS NOAA-20, VIIRS NOAA-21). These are raw sensor detections, not unique fires or harmonized counts; changes in sensor coverage can affect comparisons between years. Uncovered days are excluded, with no reconstructed values or live-window calibration. Covered days with no detections remain observed zeros.Wind is the forecast at the area centre (28.20°, 84.00°), not a region-wide maximum. It can elevate High to Critical; it does not change the expected detection count. Retrieved 2026-08-15 12:00 UTC. Seasonal recurrence and wind do not establish ignition, fuel conditions or forecast skill."
+      }
+    },
+    {
+      "name": "nepal exposes each date's own expected count even when risk colours match",
+      "pass": true
+    },
+    {
+      "name": "Change area → california recomputes all 30 colours, mean, P90 and archive insights",
+      "pass": true,
+      "detail": {
+        "id": "california",
+        "risks": [
+          "moderate",
+          "critical",
+          "critical",
+          "critical",
+          "critical",
+          "critical",
+          "critical",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "high",
+          "moderate",
+          "high"
+        ],
+        "mean": "628.8",
+        "p90": "1,613.4",
+        "insights": "California · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is August, averaging 28,408 archived sensor detections per complete month across 25 years.August had observed fire activity in 20 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded.",
+        "method": "How this prediction is calculatedThe model reads only the selected area’s entry in archive_daily.json and groups observed counts by calendar day, keeping leap day separate. It averages prior years and calculates each day’s historical 90th percentile. The current year is held out. Colours compare the expected count with the mean (243.2) and P90 (784.0) of the seasonal daily averages.Training: 2000-11-01 to 2025-12-31 · 9,192 observed days. Source ID: california. Counts sum the published sensors (MODIS, VIIRS S-NPP, VIIRS NOAA-20, VIIRS NOAA-21). These are raw sensor detections, not unique fires or harmonized counts; changes in sensor coverage can affect comparisons between years. Uncovered days are excluded, with no reconstructed values or live-window calibration. Covered days with no detections remain observed zeros.Wind is the forecast at the area centre (39.50°, -121.00°), not a region-wide maximum. It can elevate High to Critical; it does not change the expected detection count. Retrieved 2026-08-15 12:00 UTC. Seasonal recurrence and wind do not establish ignition, fuel conditions or forecast skill."
+      }
+    },
+    {
+      "name": "california exposes each date's own expected count even when risk colours match",
+      "pass": true
+    },
+    {
+      "name": "Change area → chilecito recomputes all 30 colours, mean, P90 and archive insights",
+      "pass": true,
+      "detail": {
+        "id": "chilecito",
+        "risks": [
+          "critical",
+          "critical",
+          "critical",
+          "critical",
+          "critical",
+          "moderate",
+          "moderate",
+          "moderate",
+          "moderate",
+          "low",
+          "moderate",
+          "moderate",
+          "moderate",
+          "moderate",
+          "low",
+          "moderate",
+          "low",
+          "moderate",
+          "moderate",
+          "moderate",
+          "moderate",
+          "low",
+          "moderate",
+          "low",
+          "low",
+          "low",
+          "low",
+          "low",
+          "moderate",
+          "low"
+        ],
+        "mean": "32.1",
+        "p90": "32.2",
+        "insights": "Chilecito · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is August, averaging 328 archived sensor detections per complete month across 25 years.August had observed fire activity in 20 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded.",
+        "method": "How this prediction is calculatedThe model reads only the selected area’s entry in archive_daily.json and groups observed counts by calendar day, keeping leap day separate. It averages prior years and calculates each day’s historical 90th percentile. The current year is held out. Colours compare the expected count with the mean (3.0) and P90 (8.0) of the seasonal daily averages.Training: 2000-11-01 to 2025-12-31 · 9,192 observed days. Source ID: chilecito. Counts sum the published sensors (MODIS, VIIRS S-NPP, VIIRS NOAA-20, VIIRS NOAA-21). These are raw sensor detections, not unique fires or harmonized counts; changes in sensor coverage can affect comparisons between years. Uncovered days are excluded, with no reconstructed values or live-window calibration. Covered days with no detections remain observed zeros.Wind is the forecast at the area centre (-29.16°, -67.50°), not a region-wide maximum. It can elevate High to Critical; it does not change the expected detection count. Retrieved 2026-08-15 12:00 UTC. Seasonal recurrence and wind do not establish ignition, fuel conditions or forecast skill."
+      }
+    },
+    {
+      "name": "chilecito exposes each date's own expected count even when risk colours match",
+      "pass": true
+    },
+    {
+      "name": "Different selected regions produce different values and insights",
+      "pass": true
+    },
+    {
+      "name": "Nepal has an April peak and California an August peak from the shipped archive",
+      "pass": true
+    },
+    {
+      "name": "Rapid region changes reject late winds from the previous area",
+      "pass": true
+    },
+    {
+      "name": "Changing the area recomputes its seasonal risk and insights",
+      "pass": true
+    },
+    {
+      "name": "A country without an exact archive key has No Data Available, no inherited pilot numbers",
+      "pass": true
+    },
+    {
+      "name": "No-data action explicitly selects the named archive area",
+      "pass": true
+    },
+    {
+      "name": "Failed archive fetch never falls back to reconstruction",
+      "pass": true
+    },
+    {
+      "name": "Retrying the archive restores the selected region from the real file",
+      "pass": true,
+      "detail": {
+        "archiveRequests": 5
+      }
+    },
+    {
+      "name": "Prediction is independent of a failed live/reconstructed-record load",
+      "pass": true
+    },
+    {
+      "name": "Current date, real file: Change area → nepal matches its archive",
+      "pass": true,
+      "detail": {
+        "date": "2026-11-15",
+        "mean": "85.0",
+        "p90": "243.5",
+        "insights": "Nepal · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is April, averaging 24,182 archived sensor detections per complete month across 25 years.November had observed fire activity in 20 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded."
+      }
+    },
+    {
+      "name": "Current date, real file: Change area → california matches its archive",
+      "pass": true,
+      "detail": {
+        "date": "2026-11-15",
+        "mean": "119.6",
+        "p90": "350.5",
+        "insights": "California · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is August, averaging 28,408 archived sensor detections per complete month across 25 years.November had observed fire activity in 20 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded."
+      }
+    },
+    {
+      "name": "Current date, real file: Change area → chilecito matches its archive",
+      "pass": true,
+      "detail": {
+        "date": "2026-11-15",
+        "mean": "2.6",
+        "p90": "5.5",
+        "insights": "Chilecito · learned from this area's recordHistorical Pattern InsightsOBSERVED ARCHIVE ONLYPeak month is August, averaging 328 archived sensor detections per complete month across 25 years.November had observed fire activity in 19 of 20 years with complete coverage in 2006–2025 (the last 20 years). 0 years lack complete coverage and are excluded."
+      }
+    },
+    {
+      "name": "Production CSP allows forecast wind",
+      "pass": true
+    },
+    {
+      "name": "No browser runtime exceptions in the focused Outlook flow",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

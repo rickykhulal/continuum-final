@@ -1,49 +1,63 @@
-# Continuum — Render blueprint. One web service: the built app and the read-only API on one origin.
-#
-# Render dashboard → New → Blueprint → connect this repo, and every field below is pre-filled.
-# Nothing here is a secret: the API is read-only over a committed, content-hashed data bundle, so a
-# fresh deploy needs no key. Ingest credentials (FIRMS_MAP_KEY, EARTHDATA_TOKEN) belong to whoever
-# runs a backfill and are deliberately absent.
-#
-# Why `runtime: node` and not `runtime: docker`: server/api.mjs has zero runtime dependencies
-# (node:http, node:fs, node:crypto) and reads three things from disk — dist/, dist-server/,
-# public/data/. The Node runtime starts it directly, so the deploy fits the free tier and the logs
-# stay plain. The Dockerfile stays for hosts that want an image; it has never been executed in the
-# environment that wrote it (docs/decisions.md ADR-10), so the start command below is the tested
-# path, not that one.
-#
-# The one thing not in this file: PUBLIC_API_BASE_URL. Render cannot know its own hostname at
-# blueprint time, and the API already answers /openapi.json with the Host it saw, so the deployed
-# document is correct without it. Set it only if the API is ever split onto a different origin.
-
+# Render Blueprint: full Community app plus a persistent Discord gateway worker.
+# These are paid starter services: persistent disks and background workers require a paid plan.
+# Importing/deploying this blueprint is an operator action; see docs/discord-bot.md.
 services:
   - type: web
-    name: continuum
+    name: continuum-final
     runtime: node
-    # oregon is Render's US-East-equivalent default and the closest free region to the NASA
-    # endpoints the browser calls (NASA POWER, GIBS). Change it and nothing else needs to change.
     region: oregon
-    plan: free
+    plan: starter
     branch: main
-    # --include=dev because Render exports NODE_ENV=production for Node services and `npm ci`
-    # honours it by dropping devDependencies — which are vite and typescript, needed right here.
-    # The running process imports nothing from node_modules, so the install is build-only.
     buildCommand: npm ci --include=dev && npm run api:build && npm run build
-    # = node server/api.mjs: serves dist/ under / and the API under /api/v1, on $PORT.
     startCommand: npm start
-    # /api/v1/health answers without touching the bundle; /api/v1/ready re-hashes every bundled file
-    # and fails closed, so readiness is kept as the operator's check, not the platform's hot path.
     healthCheckPath: /api/v1/health
     autoDeploy: true
+    disk:
+      name: community-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
-      # A major version, not a pinned build: Render resolves it to the newest 22.x it ships, and the
-      # app is built and run with the same one. package.json declares the same floor as `engines`.
       - key: NODE_VERSION
         value: '22'
-      # Certifies exactly this directory for GET /ready and `npm run validate`.
+      - key: NODE_ENV
+        value: production
       - key: DATA_BUNDLE_PATH
         value: public/data
+      - key: APP_DATA_PATH
+        value: /var/data/continuum
       - key: LOG_FORMAT
         value: json
-      # Unset on purpose: no METRICS_TOKEN means GET /metrics answers 404, which is the safe default.
-      # A host that wants a scrape sets it from the Render dashboard (secret value), never here.
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_REPORT_CHANNEL_ID
+        sync: false
+      - key: DISCORD_SYNC_SECRET
+        sync: false
+      # Optional: add FIRMS_MAP_KEY, DISCORD_WEBHOOK_URL or METRICS_TOKEN in the dashboard.
+      # Leave PUBLIC_API_BASE_URL unset for same-origin hosting; Render supplies PORT.
+  - type: worker
+    name: continuum-discord
+    runtime: node
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: npm ci --omit=dev
+    startCommand: npm run discord:bot
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_REPORT_CHANNEL_ID
+        sync: false
+      - key: DISCORD_SYNC_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: COMMUNITY_API_URL
+        sync: false

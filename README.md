@@ -88,42 +88,38 @@ npm run perf       # latency + web-vitals probe; starts its own API on :4182, wr
 npm run rehearse   # backup/restore drill: corrupts a temp copy of the bundle, never public/data
 ```
 
-`npm run api` is the one process that serves everything: `GET /health`, `/ready`, `/meta`, `/method-card`, `/openapi.json`, the `POST /api/v1/...` analytics endpoints, and the static `dist/` app on the same origin. It needs no key and no database.
+`npm run api` serves the static `dist/` app and `/api/v1` API on one origin. The scientific
+bundle is committed; Community posts, votes and API keys are stored separately under `APP_DATA_PATH`.
+The static dashboard can run without a NASA key. Community writes and live provider polling require
+an API service; Discord interactions additionally require the bot worker.
 
-The build is fully static (`base: './'`, hash routing) — it deploys to GitHub Pages, Netlify, S3 or any static host with no server and no environment variables.
+## Deploy — Render web service and Discord worker
 
-## Deploy — Render (one service, one origin)
+The final repository is [rickykhulal/continuum-final](https://github.com/rickykhulal/continuum-final),
+branch `main`. `render.yaml` configures a Starter web service with a persistent disk and a Starter
+background worker; these are paid Render services. The web service serves the app and API together,
+and the worker handles Discord buttons and modals. Import the blueprint through **New → Blueprint**,
+or configure the two services manually using [the Environment-tab instructions](docs/discord-bot.md#render-deployment-environment-tab-web-service-and-discord-worker).
 
-`render.yaml` is a Render blueprint, so the deploy is **New + → Blueprint → connect this repo** and Render reads every field below off the file. The build and start commands in it are the ones that were run on a fresh clone of this repository, not typed from documentation — see `docs/runbooks.md` §9.
-
-| Field | Value | Why |
+| Service | Build | Start |
 | --- | --- | --- |
-| Build | `npm ci --include=dev && npm run api:build && npm run build` | `--include=dev` because Render exports `NODE_ENV=production` and `npm ci` honours it by dropping vite and typescript, which the build step needs. `api:build` emits `dist-server/analytics.mjs` — the same `src/lib` code the browser runs — then `build` emits `dist/`. |
-| Start | `npm start` → `node server/api.mjs` | zero runtime dependencies, binds `$PORT`, serves `dist/` under `/` and the API under `/api/v1` on the same origin — so no CORS entry and no second service |
-| Health | `/api/v1/health` | answers without touching the bundle. `/api/v1/ready` is the stricter operator check: it re-hashes every bundled file and fails closed |
-| Env | `NODE_VERSION=22`, `DATA_BUNDLE_PATH=public/data`, `LOG_FORMAT=json` | no secrets, because the API is read-only over a committed, content-hashed bundle. `METRICS_TOKEN` stays unset, so `/metrics` answers `404` until a host explicitly wants a scrape |
+| Web/API | `npm ci --include=dev && npm run api:build && npm run build` | `npm start` |
+| Discord worker | `npm ci --omit=dev` | `npm run discord:bot` |
 
-Verify the deployed host instead of assuming it:
+Set `APP_DATA_PATH=/var/data/continuum` on the web service, with its disk mounted at `/var/data`.
+Configure actual Discord/Gemini credentials in Render's Environment tab, following `.env.example`;
+never upload `.env`. Render supplies `PORT`. The default Gemini model is `gemini-3.8-flash`.
+The worker's `COMMUNITY_API_URL` must point to the web service's HTTPS URL ending in `/api/v1`.
+One API process writes the JSON store, and one bot process handles interactions. A free web-only
+deployment has an ephemeral filesystem and does not provide this full persistent Community setup.
 
-```bash
-curl -s https://<service>.onrender.com/api/v1/health   # bundle_version + data_through
-curl -s https://<service>.onrender.com/api/v1/ready    # 200 = every bundled file hashes as published
-curl -s -X POST https://<service>.onrender.com/api/v1/area/summary \
-  -H 'content-type: application/json' \
-  -d '{"region_id":"country-kenya","start":"2026-10-26","end":"2026-11-02"}'
-```
+Check `/api/v1/health` and `/api/v1/ready` after deploying. Generate a browser API key through
+`POST /api/v1/auth/generate-key`, then send it as `X-API-Key` on data routes, including
+`GET /api/v1/outlook?region_id=nepal`. Incident confirmation uses
+`POST /api/v1/community/vote` with `{ "postId": "...", "action": "verify" }`; poll votes use
+`optionIndex` instead. Full API contracts: [docs/api.md](docs/api.md).
 
-The third call must return `by_sensor {modis: 12, viirs: 78, noaa20: 81, noaa21: 74}` and `total: 233`
-— the detections Kenya's border actually recorded in the shipped window. Same numbers as
-`npm run smoke` on this machine, because both surfaces install the world layer with the same function
-(`docs/decisions.md` ADR-23).
-
-Two free-tier properties worth knowing before a link goes to a judge: the service sleeps after
-inactivity, so the first hit takes ~30 s, and the deploy builds from the git tree, which deliberately
-excludes `data_raw/` — the host ships `public/data` exactly as published and `GET /ready` is what
-proves nothing drifted in transit.
-
-**What was run before the tree was published, and what it showed.** The pushed `main` was cloned into a
+**Historical verification of the earlier repository (November 2026).** The pushed `main` was cloned into a
 clean directory and the chain re-run there: build with identical hashed assets, `npm test` 70/70,
 `npm run validate` 23/23 ("16 files verified, 4 `data_raw` build inputs absent"), `npm run smoke` 49/49,
 `npm run e2e` 100/100, `npm run rehearse` 12/12 and `GET /ready` 200. `.github/workflows/ci.yml` has since run
@@ -175,7 +171,7 @@ tests/             geometry · science · api · bundle (node:test)
 docs/              PLAN.md · challenge-conformance.md · api.md · validation.md · provenance.md ·
                    runbooks.md · decisions.md ·
                    production-readiness.md + the *-report.json gate outputs
-render.yaml        Render blueprint: build, start, health path, env — the deploy that was executed
+render.yaml        Render blueprint: web service, persistent Community disk, Discord worker
 Dockerfile · docker-compose.yml · deploy/static-headers.example   authored, not executed here (§Not verified)
 ```
 

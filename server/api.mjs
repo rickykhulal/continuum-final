@@ -13,9 +13,16 @@ import {
   getPosts as communityGetPosts,
   createPost as communityCreatePost,
   votePoll as communityVotePoll,
+  upvoteReport as communityUpvoteReport,
   verifyAnomaly as communityVerifyAnomaly,
   getAnnouncements as communityGetAnnouncements,
+  CommunityValidationError,
 } from './community-store.mjs';
+import { discordSyncAuthorized, sendDiscordReport, verifyCommunityReport } from './community-integrations.mjs';
+import { loadCommunityEnv } from './community-env.mjs';
+import { MAX_IMAGE_DATA_URL_LENGTH } from './community-image.mjs';
+
+loadCommunityEnv();
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_BUNDLE_PATH = process.env.DATA_BUNDLE_PATH || null;
@@ -103,6 +110,14 @@ if (gazetteerFile && countryWindowFile) {
 const snapshot = readJson(path.join(dataDir, 'snapshot.json'));
 const manifest = readJson(path.join(dataDir, 'bundle_manifest.json'));
 const liveFires = Array.isArray(live?.fires) ? live.fires : [];
+const communitySatelliteBundle = () => readJson(path.join(dataDir, 'live_fires.json'));
+async function createVerifiedCommunityPost(input, options) {
+  const liveBundle = communitySatelliteBundle();
+  const verification = await verifyCommunityReport(input?.lat, input?.lon, liveBundle);
+  return communityCreatePost(input, { ...options, liveBundle, verification });
+}
+const communityVoter = req => typeof req.headers['x-api-key'] === 'string'
+  ? crypto.createHash('sha256').update(req.headers['x-api-key']).digest('hex') : null;
 
 const BUNDLE_VERSION =
   process.env.DATA_BUNDLE_VERSION || manifest?.bundle_version || snapshot?.generatedAt || 'unversioned';
@@ -574,25 +589,38 @@ const routes = {
   },
 
   // ---------------------------------------------------------------- Community Hub
-  'POST /community/posts': (body) => {
-    const post = communityCreatePost({
-      author: body?.author,
-      type: body?.type,
-      content: body?.content,
-      imageUrl: body?.imageUrl,
-      isAnomaly: body?.isAnomaly,
-      options: body?.options,
-    });
-    if (!post) throw new ApiError(422, 'PARAMETER_INVALID', 'Could not create post.', 'Provide author, type and content.');
-    return envelope({ post });
+  'POST /community/posts': async (body) => {
+    const post = await createVerifiedCommunityPost(body, { source: 'web' });
+    const discordDelivery = await sendDiscordReport(post);
+    return envelope({ post, discordDelivery });
   },
-  'POST /community/vote': (body) => {
-    const post = communityVotePoll({ postId: body?.postId, optionIndex: body?.optionIndex });
+  'POST /community/discord-sync': async (body) => {
+    const post = await createVerifiedCommunityPost({ author: body?.author ?? body?.name, content: body?.content, imageBase64: body?.imageBase64, imageUrl: body?.imageUrl, lat: body?.lat, lon: body?.lon,
+      locationName: body?.locationName, type: 'anomaly' }, { source: 'discord', discordMessageId: body?.discordMessageId });
+    return envelope({ success: true, post }); // Do not echo an inbound Discord report back to Discord.
+  },
+  'POST /community/vote': (body, req) => {
+    if (body?.action != null) {
+      if (body.action !== 'verify' || body.optionIndex != null) throw new ApiError(422, 'PARAMETER_INVALID', 'Use action "verify" for an incident, or optionIndex for a poll.');
+      const post = communityUpvoteReport({ postId: body?.postId, voterId: communityVoter(req) });
+      if (!post) throw new ApiError(422, 'PARAMETER_INVALID', 'Choose an existing incident report.');
+      return envelope({ post });
+    }
+    const post = communityVotePoll({ postId: body?.postId, optionIndex: body?.optionIndex, voterId: communityVoter(req) });
     if (!post) throw new ApiError(422, 'PARAMETER_INVALID', 'Could not register vote.', 'Provide a valid poll postId and optionIndex.');
     return envelope({ post });
   },
-  'POST /community/verify': (body) => {
-    const post = communityVerifyAnomaly({ postId: body?.postId, verified: body?.verified });
+  'POST /community/upvote': (body, req) => {
+    const post = communityUpvoteReport({ postId: body?.postId, voterId: communityVoter(req) });
+    if (!post) throw new ApiError(422, 'PARAMETER_INVALID', 'Choose an existing incident report.');
+    return envelope({ post });
+  },
+  'POST /community/verify': async (body) => {
+    const current = communityGetPosts().find(post => post.id === body?.postId && post.type === 'anomaly');
+    if (!current) throw new ApiError(422, 'PARAMETER_INVALID', 'Choose an existing incident report.');
+    const liveBundle = communitySatelliteBundle();
+    const verification = await verifyCommunityReport(current.lat, current.lon, liveBundle);
+    const post = communityVerifyAnomaly({ postId: current.id }, liveBundle, verification);
     if (!post) throw new ApiError(422, 'PARAMETER_INVALID', 'Could not verify anomaly.', 'Provide a valid anomaly postId.');
     return envelope({ post, announcements: communityGetAnnouncements() });
   },
@@ -652,10 +680,10 @@ const GET_ROUTES = {
     // Reuses the summary computation over the full record range.
     return [200, envelope({ trend: 'harmonized', note: 'Use POST /area/summary with region_id/lat/lon for the full record series.' })];
   },
-  '/community/feed': () => [
+  '/community/feed': (req) => [
     200,
     envelope({
-      posts: communityGetPosts(),
+      posts: communityGetPosts({ voterId: communityVoter(req) }),
       announcements: communityGetAnnouncements(),
     }),
   ],
@@ -823,7 +851,7 @@ function securityHeaders(req) {
     // blob: in img-src is not slack — the PNG export rasterizes an SVG blob through new Image(),
     // and without it the CSP silently kills the download while the rest of the app looks fine.
     'Content-Security-Policy':
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://power.larc.nasa.gov https://gibs.earthdata.nasa.gov; connect-src 'self' blob: https://api.open-meteo.com https://power.larc.nasa.gov https://gibs.earthdata.nasa.gov; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://power.larc.nasa.gov https://gibs.earthdata.nasa.gov; connect-src 'self' blob: https://api.open-meteo.com https://geocoding-api.open-meteo.com https://power.larc.nasa.gov https://gibs.earthdata.nasa.gov; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
     'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
   };
   if (proto === 'https') h['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
@@ -901,17 +929,17 @@ function rateClass(pathname) {
   return CLASS_OF[key || ''] || 'B';
 }
 
-function readBody(req) {
+function readBody(req, limit = BODY_LIMIT) {
   return new Promise((resolve, reject) => {
     let size = 0;
     let rejected = false;
     const chunks = [];
     req.on('data', (c) => {
       size += c.length;
-      if (size > BODY_LIMIT && !rejected) {
+      if (size > limit && !rejected) {
         rejected = true;
         chunks.length = 0;
-        reject(new ApiError(413, 'BODY_TOO_LARGE', `Request body exceeds ${BODY_LIMIT / 1024 / 1024} MB.`, 'Reduce the geometry or send fewer vertices.'));
+        reject(new ApiError(413, 'BODY_TOO_LARGE', `Request body exceeds ${Math.round(limit / 1024 / 1024 * 10) / 10} MiB.`, 'Reduce the request size; report images must be at most 4 MiB before Base64 encoding.'));
       }
       if (!rejected) chunks.push(c);
     });
@@ -1095,7 +1123,14 @@ const server = http.createServer(async (req, res) => {
       const sub = pathname.replace('/api/v1', '');
       // Key issuance must remain reachable after the first registration. Data
       // endpoints still enforce keys; embedded GLB images only need blob fetches.
-      if (sub !== '/health' && sub !== '/openapi.json' && sub !== '/auth/generate-key') apiKey(req);
+      if (sub === '/community/discord-sync') {
+        if (req.method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST for Discord sync.');
+        if (!process.env.DISCORD_SYNC_SECRET?.trim()) throw new ApiError(503, 'DISCORD_NOT_CONFIGURED', 'Discord sync is not configured.');
+        if (!discordSyncAuthorized(req.headers['x-discord-secret'])) throw new ApiError(401, 'UNAUTHORIZED', 'Invalid Discord sync credential.');
+      } else if (sub !== '/health' && sub !== '/openapi.json' && sub !== '/auth/generate-key') {
+        const authenticatedKey = apiKey(req);
+        if (['/community/vote', '/community/upvote'].includes(sub) && !authenticatedKey) throw new ApiError(401, 'UNAUTHORIZED', 'A registered API key is required to vote.');
+      }
       const get = GET_ROUTES[sub];
       if (get && (req.method === 'GET' || req.method === 'HEAD')) return await callGet(get, req, res, cors);
       const handler = routes[`POST ${sub}`];
@@ -1106,8 +1141,8 @@ const server = http.createServer(async (req, res) => {
       // Without this check a DELETE or PUT on a known path is read as an empty POST and answered 422,
       // which tells a client the body is wrong when the method is what is wrong.
       if (req.method !== 'POST') throw new ApiError(405, 'METHOD_NOT_ALLOWED', `${req.method} is not allowed on ${sub}.`, 'Use POST.');
-      const body = await readBody(req);
-      const result = await handler(body);
+      const body = await readBody(req, ['/community/posts', '/community/discord-sync'].includes(sub) ? MAX_IMAGE_DATA_URL_LENGTH + 65536 : BODY_LIMIT);
+      const result = await handler(body, req);
       if (result?.__stream) {
         const payload = Buffer.isBuffer(result.body) ? result.body : Buffer.from(String(result.body), 'utf8');
         res.writeHead(200, {
@@ -1129,6 +1164,7 @@ const server = http.createServer(async (req, res) => {
     }
     return serveStatic(req, res, pathname);
   } catch (err) {
+    if (err instanceof CommunityValidationError) err = new ApiError(422, 'PARAMETER_INVALID', err.message);
     const status = err instanceof ApiError ? err.status : 500;
     const code = err instanceof ApiError ? err.code : 'INTERNAL';
     if (status >= 500) console.error(`[${id}] Internal Server Error`);
@@ -1177,6 +1213,19 @@ function openapiDoc(req) {
       responses: { 200: { description: 'JSON result with method_version, bundle_version, data_through' }, 422: { description: 'INVALID_GEOMETRY / AREA_TOO_LARGE / DATE_RANGE_INVALID / PARAMETER_INVALID / OUT_OF_COVERAGE' }, 429: { description: 'RATE_LIMITED with Retry-After' } },
     },
   });
+  const imageField = { type: 'string', maxLength: MAX_IMAGE_DATA_URL_LENGTH, description: 'Optional Base64 PNG, JPEG or WebP data URL; decoded image at most 4 MiB.' };
+  const communityPost = (route, properties) => {
+    const operation = post(route, 'B').post;
+    operation.requestBody.content['application/json'].schema = { type: 'object', required: ['content'], properties };
+    operation.responses[401] = { description: 'Missing or invalid credential' };
+    operation.responses[413] = { description: 'Report JSON exceeds image upload envelope limit' };
+    return { post: operation };
+  };
+  const communityVote = communityPost('/community/vote', { postId: { type: 'string' }, optionIndex: { type: 'integer', minimum: 0 }, action: { type: 'string', enum: ['verify'] } });
+  const voteSchema = communityVote.post.requestBody.content['application/json'].schema;
+  voteSchema.required = ['postId'];
+  voteSchema.oneOf = [{ required: ['action'], not: { required: ['optionIndex'] } }, { required: ['optionIndex'], not: { required: ['action'] } }];
+  communityVote.post.summary = 'Vote in a poll, or confirm an incident with action: verify (registered API key required)';
   return {
     openapi: '3.1.0',
     info: { title: 'Continuum read-only API', version: METHOD_VERSION, description: 'Sensor-harmonized burning activity for the seven pilot regions, any of the 241 country borders, and any circle or polygon area on Earth.' },
@@ -1197,11 +1246,13 @@ function openapiDoc(req) {
       '/community/feed': { get: { summary: 'Community feed — posts and verified announcements', 'x-rate-class': 'B', responses: { 200: { description: 'OK' } } } },
       '/atlas': { get: { summary: 'Processed burning calendar for an area (dates, raw/harmonized counts, 90% CI)', 'x-rate-class': 'B', parameters: [{ name: 'region_id', in: 'query', required: false, schema: { type: 'string' }, description: 'Pilot id or country-<id>' }, { name: 'lat', in: 'query', required: false, schema: { type: 'number' } }, { name: 'lon', in: 'query', required: false, schema: { type: 'number' } }, { name: 'start', in: 'query', required: false, schema: { type: 'string', format: 'date' } }, { name: 'end', in: 'query', required: false, schema: { type: 'string', format: 'date' } }], responses: { 200: { description: 'OK' } } } },
       '/diagnosis': { get: { summary: 'Bias X-ray — sensor overlap ratio k, 2012 break, calibration metrics', 'x-rate-class': 'B', parameters: [{ name: 'region_id', in: 'query', required: false, schema: { type: 'string' } }, { name: 'lat', in: 'query', required: false, schema: { type: 'number' } }, { name: 'lon', in: 'query', required: false, schema: { type: 'number' } }], responses: { 200: { description: 'OK' } } } },
-      '/outlook': { get: { summary: 'Analog season forecasts and fire-weather stress outlook', 'x-rate-class': 'B', parameters: [{ name: 'region_id', in: 'query', required: false, schema: { type: 'string' } }, { name: 'lat', in: 'query', required: false, schema: { type: 'number' } }, { name: 'lon', in: 'query', required: false, schema: { type: 'number' } }], responses: { 200: { description: 'OK' } } } },
+      '/outlook': { get: { summary: 'Selected-region analog seasons, four-week departure and backtest results', 'x-rate-class': 'B', parameters: [{ name: 'region_id', in: 'query', required: false, description: 'Pilot ID or country-<id>, as listed by GET /meta.', schema: { type: 'string' }, example: 'nepal' }, { name: 'lat', in: 'query', required: false, schema: { type: 'number' } }, { name: 'lon', in: 'query', required: false, schema: { type: 'number' } }], responses: { 200: { description: 'Analog outlook derived from the selected area record; not a current weather forecast.' } } } },
       '/brief': { get: { summary: 'Generated textual/markdown brief for a region', 'x-rate-class': 'B', parameters: [{ name: 'region_id', in: 'query', required: false, schema: { type: 'string' } }, { name: 'lat', in: 'query', required: false, schema: { type: 'number' } }, { name: 'lon', in: 'query', required: false, schema: { type: 'number' } }, { name: 'start', in: 'query', required: false, schema: { type: 'string', format: 'date' } }, { name: 'end', in: 'query', required: false, schema: { type: 'string', format: 'date' } }, { name: 'language', in: 'query', required: false, schema: { type: 'string', enum: ['en', 'es'] } }], responses: { 200: { description: 'OK' } } } },
-      '/community/posts': post('/community/posts', 'B', { author: { type: 'string' }, type: { type: 'string', enum: ['text', 'poll', 'anomaly'] }, content: { type: 'string' }, imageUrl: { type: 'string' }, options: { type: 'array', items: { type: 'string' } } }),
-      '/community/vote': post('/community/vote', 'B', { postId: { type: 'string' }, optionIndex: { type: 'integer' } }),
-      '/community/verify': post('/community/verify', 'B', { postId: { type: 'string' }, verified: { type: 'boolean' } }),
+      '/community/posts': communityPost('/community/posts', { author: { type: 'string', maxLength: 60 }, type: { type: 'string', enum: ['text', 'poll', 'anomaly'] }, content: { type: 'string', minLength: 1, maxLength: 1000 }, imageBase64: imageField, imageUrl: { type: 'string', maxLength: 2000, description: 'Optional HTTPS image link on a supported host; see Discord bot documentation.' }, locationName: { type: 'string', maxLength: 160 }, lat: { type: ['number', 'null'], minimum: -90, maximum: 90 }, lon: { type: ['number', 'null'], minimum: -180, maximum: 180 }, pollOptions: { type: 'array', minItems: 2, maxItems: 6, items: { type: 'object', properties: { text: { type: 'string', maxLength: 100 } } } } }),
+      '/community/discord-sync': { post: { ...communityPost('/community/discord-sync', { author: { type: 'string', maxLength: 60 }, name: { type: 'string', maxLength: 60, description: 'Legacy author alias' }, content: { type: 'string', minLength: 1, maxLength: 2000 }, imageBase64: imageField, imageUrl: { type: 'string', maxLength: 2000, description: 'Optional HTTPS image link on a supported host; see Discord bot documentation.' }, discordMessageId: { type: 'string', pattern: '^\\d{10,25}$', description: 'Stable Discord interaction or message ID for retry deduplication' }, locationName: { type: 'string', maxLength: 160 }, lat: { type: ['number', 'null'], minimum: -90, maximum: 90 }, lon: { type: ['number', 'null'], minimum: -180, maximum: 180 } }).post, summary: 'Import a Discord report (X-Discord-Secret required; no web API key)', parameters: [{ in: 'header', name: 'x-discord-secret', required: true, schema: { type: 'string' } }] } },
+      '/community/vote': communityVote,
+      '/community/upvote': post('/community/upvote', 'B', { postId: { type: 'string', description: 'Confirm an incident once per registered API key; three distinct keys yield community_verified.' } }),
+      '/community/verify': post('/community/verify', 'B', { postId: { type: 'string', description: 'Recheck stored report coordinates against satellite detections; caller-supplied verification flags are ignored.' } }),
       '/meta': { get: { summary: 'Versions, coverage, pilots, limits', 'x-rate-class': 'A', responses: { 200: { description: 'OK' } } } },
       '/method-card': { get: { summary: 'Equations, limits, provenance', 'x-rate-class': 'A', responses: { 200: { description: 'OK' } } } },
       '/health': { get: { summary: 'Liveness', responses: { 200: { description: 'OK' } } } },

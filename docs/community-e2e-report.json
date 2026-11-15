@@ -1,0 +1,161 @@
+{
+  "status": "verified",
+  "origin": "http://127.0.0.1:5173",
+  "database": "isolated temporary store; user database untouched",
+  "providers": "Real Biratnagar geocoding; later search failure/race fixtures. Real stored FIRMS tuples. Current weather uses explicit hot/dry and cold/wet fixtures from tests/helpers/community-api.mjs. Discord relay tested locally; outbound network disabled.",
+  "pass": 34,
+  "total": 34,
+  "results": [
+    {
+      "name": "Empty database renders a clean feed with no previous test posts",
+      "pass": true
+    },
+    {
+      "name": "Desktop feed is centered and bounded to 760px",
+      "pass": true,
+      "detail": {
+        "width": 760,
+        "left": 326,
+        "availableWidth": 1412
+      }
+    },
+    {
+      "name": "Oversized uploads are rejected before posting",
+      "pass": true
+    },
+    {
+      "name": "FileReader produces a decoded image preview",
+      "pass": true
+    },
+    {
+      "name": "Attachment can be removed before posting",
+      "pass": true
+    },
+    {
+      "name": "Real Open-Meteo search returns Biratnagar, Nepal with coordinates",
+      "pass": true,
+      "detail": [
+        "Biratnagar"
+      ]
+    },
+    {
+      "name": "Choosing a geocoding result retains its name and coordinates",
+      "pass": true
+    },
+    {
+      "name": "Image bytes persist in the API record and render in the web feed",
+      "pass": true
+    },
+    {
+      "name": "Successful publishing clears the attachment draft",
+      "pass": true
+    },
+    {
+      "name": "Anomaly saves geocoded coordinates and a server-computed verification badge",
+      "pass": true,
+      "detail": {
+        "locationName": "Biratnagar, Nepal",
+        "lat": 26.45505,
+        "lon": 87.27007,
+        "status": "pending"
+      }
+    },
+    {
+      "name": "Feed displays location, coordinates, source and status",
+      "pass": true
+    },
+    {
+      "name": "Voting persists once even after repeat clicks",
+      "pass": true
+    },
+    {
+      "name": "Changing choice moves the vote instead of adding a second one",
+      "pass": true
+    },
+    {
+      "name": "Refreshing feed preserves selected option and backend totals",
+      "pass": true
+    },
+    {
+      "name": "Incomplete manual coordinates cannot publish a report",
+      "pass": true
+    },
+    {
+      "name": "Manual location at an actual stored detection gets green badge and dated evidence",
+      "pass": true
+    },
+    {
+      "name": "Authenticated Discord relay saves a report successfully",
+      "pass": true
+    },
+    {
+      "name": "Discord image reports appear automatically without manual refresh",
+      "pass": true
+    },
+    {
+      "name": "Discord inbound report appears in feed with source and pending badge",
+      "pass": true
+    },
+    {
+      "name": "Poll filter limits feed to polls",
+      "pass": true
+    },
+    {
+      "name": "Mobile feed and form fit without horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "Companion does not cover mobile reports or voting controls",
+      "pass": true
+    },
+    {
+      "name": "Provider failure is visible and manual coordinates remain available",
+      "pass": true
+    },
+    {
+      "name": "Late results from a previous search cannot replace current results",
+      "pass": true
+    },
+    {
+      "name": "Location dropdown supports keyboard selection",
+      "pass": true
+    },
+    {
+      "name": "Editing selected location clears the old point",
+      "pass": true
+    },
+    {
+      "name": "Page reload preserves posts and vote totals",
+      "pass": true
+    },
+    {
+      "name": "Page reload preserves image attachments",
+      "pass": true
+    },
+    {
+      "name": "Hot/dry/windy fixture renders orange High Risk Weather with measurements",
+      "pass": true
+    },
+    {
+      "name": "Cold/wet fixture stays yellow Pending Verification with separate readings",
+      "pass": true
+    },
+    {
+      "name": "Human confirmation button records one vote and disables repeat voting",
+      "pass": true
+    },
+    {
+      "name": "Three distinct voters produce blue Community Verified while retaining weather evidence",
+      "pass": true
+    },
+    {
+      "name": "Production CSP permits Open-Meteo geocoding",
+      "pass": true
+    },
+    {
+      "name": "No browser runtime exceptions in Community workflow",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

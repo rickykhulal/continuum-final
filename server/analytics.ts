@@ -57,6 +57,8 @@ export {
 export { platformEquivalent, archiveRatio, archiveSupplementary } from '../src/lib/archive';
 export { historicalMapSummary } from '../src/lib/historicalMap';
 export { windRequest, parseWind, windCompass, fetchWind } from '../src/lib/wind';
+export { forecastWindRequest, parseWindForecast, fetchWindForecast } from '../src/lib/wind';
+export { predictFutureRisk, loadPredictionArchive, climatologyDoy, forecastToday } from '../src/lib/prediction';
 export { highFrpAlerts, verifiedCommunityAlerts, HIGH_FRP_MW } from '../src/lib/realAlerts';
 export { customRegion, customBounds, searchPlaces, PLACES } from '../src/data/places';
 export { hydrateWorldLayer, installWorldLayer, uninstallWorldLayer, countryRegion, countryById, worldCountries, countryWindow, windowMeta_, searchWorld, SPELLING_ALIASES, alignCountryFiresToRealtime } from '../src/lib/countries';

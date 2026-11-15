@@ -1,8 +1,7 @@
-import { Component, Suspense, useState, useEffect, useRef, useMemo, useCallback, type ReactNode, type RefObject, type PointerEvent } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { Bounds } from '@react-three/drei';
+import { Component, Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode, type PointerEvent } from 'react';
+import { Canvas, useLoader } from '@react-three/fiber';
+import { Bounds, Environment, Lightformer } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { Group } from 'three';
 import * as THREE from 'three';
 import { useStore } from '../lib/store';
 
@@ -15,6 +14,20 @@ const FACTS = [
   'Woof! A hotspot detection is not the same as a separate fire.',
   'MODIS and VIIRS use different sensors, so comparisons need calibration.',
   'Freshness matters: Continuum labels its seven-day observed window.',
+  'Did you know? NASA launched Terra in December 1999.',
+  'Woof! MODIS stands for Moderate Resolution Imaging Spectroradiometer.',
+  'VIIRS stands for Visible Infrared Imaging Radiometer Suite.',
+  'A 375 m VIIRS fire pixel describes the sampling scale, not the exact size of the fire.',
+  'Hot, dry and windy weather can make fires easier to ignite and spread.',
+  'Clouds can hide a fire from a satellite. No detection does not prove there is no fire.',
+  'NASA Aqua launched in 2002 and carries a MODIS instrument.',
+  'Suomi NPP launched in 2011 and carries the first VIIRS instrument.',
+  'More sensitive sensors can raise detection counts without a matching rise in real fire activity.',
+  'Continuum uses overlap observations to calibrate comparisons across the MODIS–VIIRS transition.',
+  'A polar-orbiting satellite revisits an area on later passes; it does not watch every spot continuously.',
+  'Wind direction tells us where the wind comes from: a north wind blows toward the south.',
+  'Fire radiative power measures the rate of radiant energy release, not the total burned area.',
+  'A seasonal risk calendar describes historical patterns. It cannot predict an individual ignition.',
 ];
 
 const FACT_INTERVAL_MS = 45_000;
@@ -24,30 +37,10 @@ interface PetCompanionProps {
   size?: number;
 }
 
-function PetModel({ reduceMotion, tether }: { reduceMotion: boolean; tether: RefObject<SVGSVGElement> }) {
-  // This uncompressed GLB needs no WASM decoder, which keeps the strict script CSP.
+function PetModel() {
+  // Float the whole DOM handle so the model and tether share one screen-space position.
   const { scene } = useLoader(GLTFLoader, `${import.meta.env.BASE_URL || './'}models/pet1.glb`);
-  const floating = useRef<Group>(null);
-  const waist = useMemo(() => new THREE.Box3().setFromObject(scene).getCenter(new THREE.Vector3()), [scene]);
-  const projected = useMemo(() => new THREE.Vector3(), []);
-  useFrame(({ clock, camera, gl }) => {
-    if (floating.current) floating.current.position.y = reduceMotion ? 0 : Math.sin(clock.elapsedTime) * 0.2;
-    if (!floating.current || !tether.current) return;
-    floating.current.updateWorldMatrix(true, false);
-    projected.copy(waist);
-    floating.current.localToWorld(projected).project(camera);
-    const canvasBox = gl.domElement.getBoundingClientRect();
-    const pipeBox = tether.current.getBoundingClientRect();
-    if (!pipeBox.width || !pipeBox.height) return;
-    const x = canvasBox.left + (projected.x + 1) * canvasBox.width / 2 - pipeBox.left;
-    const y = canvasBox.top + (1 - projected.y) * canvasBox.height / 2 - pipeBox.top;
-    const curve = `M ${pipeBox.width} ${pipeBox.height} C ${pipeBox.width - 80} ${pipeBox.height - 8}, ${x + 80} ${y + 100}, ${x} ${y}`;
-    tether.current.querySelectorAll('path').forEach(path => path.setAttribute('d', curve));
-    const socket = tether.current.querySelector('circle');
-    socket?.setAttribute('cx', String(x));
-    socket?.setAttribute('cy', String(y));
-  });
-  return <group ref={floating}><primitive object={scene} /></group>;
+  return <primitive object={scene} />;
 }
 
 class PetSceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -69,6 +62,8 @@ export function PetCompanion({ size = 150 }: PetCompanionProps) {
   const lastFactIndex = useRef(-1);
   const hideFactTimer = useRef<number | null>(null);
   const tether = useRef<SVGSVGElement>(null);
+  const handle = useRef<HTMLDivElement>(null);
+  const floatOffset = useRef(0);
   const width = () => Math.min(size, Math.max(0, window.innerWidth - 40));
   const clamp = (left: number, top: number) => ({
     left: Math.max(0, Math.min(left, window.innerWidth - width())),
@@ -76,6 +71,34 @@ export function PetCompanion({ size = 150 }: PetCompanionProps) {
   });
   const anchor = () => clamp(window.innerWidth - width() - 20, window.innerHeight - size - (window.innerWidth <= 700 ? 170 : 120));
   const [position, setPosition] = useState(anchor);
+  const positionRef = useRef(position);
+  const drawTether = useCallback(() => {
+    const x = positionRef.current.left + Math.min(size, Math.max(0, window.innerWidth - 40)) / 2;
+    const y = positionRef.current.top + size / 2 + floatOffset.current;
+    const endX = window.innerWidth, endY = window.innerHeight;
+    const bend = Math.min(160, Math.max(40, (endX - x) / 3));
+    const curve = `M ${endX} ${endY} C ${endX - bend} ${endY}, ${x + bend} ${y + 60}, ${x} ${y}`;
+    tether.current?.querySelectorAll('path').forEach(path => path.setAttribute('d', curve));
+    const socket = tether.current?.querySelector('circle');
+    socket?.setAttribute('cx', String(x));
+    socket?.setAttribute('cy', String(y));
+    if (handle.current) handle.current.style.transform = `translateY(${floatOffset.current}px)`;
+  }, [size]);
+  useLayoutEffect(() => {
+    positionRef.current = position;
+    drawTether();
+  }, [position, drawTether]);
+  useEffect(() => {
+    let frame: number;
+    const animate = (time: number) => {
+      floatOffset.current = settings.reduceMotion ? 0 : Math.sin(time / 1000) * 5;
+      drawTether();
+      if (!settings.reduceMotion) frame = requestAnimationFrame(animate);
+    };
+    animate(performance.now());
+    window.addEventListener('resize', drawTether);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', drawTether); };
+  }, [settings.reduceMotion, drawTether]);
   const userMoved = useRef(false);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ id: number; x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
@@ -156,11 +179,12 @@ export function PetCompanion({ size = 150 }: PetCompanionProps) {
         aria-hidden="true"
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}
       >
-        <path d="M 200 240 C 138 232, 198 150, 105 70" fill="none" stroke="#19bdca" strokeWidth="6" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 5px #29e0ee)' }} />
-        <path d="M 200 240 C 138 232, 198 150, 105 70" fill="none" stroke="#bdffff" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="105" cy="70" r="4" fill="#baffff" />
+        <path d="" fill="none" stroke="#19bdca" strokeWidth="6" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 5px #29e0ee)' }} />
+        <path d="" fill="none" stroke="#bdffff" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx={position.left + width() / 2} cy={position.top + size / 2} r="4" fill="#baffff" />
       </svg>
       <div
+        ref={handle}
         className="pet-drag-handle"
         role="button"
         tabIndex={0}
@@ -188,11 +212,18 @@ export function PetCompanion({ size = 150 }: PetCompanionProps) {
             fallback={<div style={{ fontSize: 64, textAlign: 'center' }}>🐶</div>}
             style={{ width: '100%', height: '100%', display: 'block', background: 'transparent' }}
           >
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 10, 10]} intensity={1.5} />
+            <ambientLight intensity={1.5} />
+            <directionalLight position={[10, 10, 10]} intensity={3} />
+            <spotLight position={[-10, 10, 10]} intensity={2} />
+            {/* Local studio reflections brighten metallic textures without a remote HDR dependency. */}
+            <Environment resolution={64} frames={1}>
+              <Lightformer position={[0, 3, 4]} scale={[5, 5, 1]} intensity={2} />
+              <Lightformer position={[-4, 1, 0]} rotation={[0, Math.PI / 2, 0]} scale={[4, 4, 1]} intensity={2} />
+              <Lightformer position={[4, 1, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[4, 4, 1]} intensity={1.5} />
+            </Environment>
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.4} maxDuration={0}>
-                <PetModel reduceMotion={settings.reduceMotion} tether={tether} />
+                <PetModel />
               </Bounds>
             </Suspense>
           </Canvas>

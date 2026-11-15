@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveFirms } from '../lib/liveClient';
 import { ALLOW_MOCK_LIVE } from '../lib/liveClient';
+import { useStore } from '../lib/store';
 import * as maplibregl from 'maplibre-gl';
 import type { MapGeoJSONFeature } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
@@ -82,6 +83,10 @@ export function LiveMap({
   // Transport state of the live endpoint. Provenance and freshness stay on the
   // payload; this hook only reports how the request itself went.
   const live = useLiveFirms();
+  const { toast } = useStore();
+  useEffect(() => {
+    if (live.error === 'Live API timeout. Using bundled snapshot.') toast(live.error);
+  }, [live.error, toast]);
 
   const liveStatusLabel =
     live.status === 'loading'

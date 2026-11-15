@@ -261,6 +261,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [tourOpen, setTourOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const toast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToastMsg(null), 4000);
+  }, []);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const region = useMemo(() => (custom && custom.id === regionId ? custom : REGIONS.find((r) => r.id === regionId) ?? REGIONS[0]), [regionId, custom]);
 
@@ -270,52 +276,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    let floorTimer: number | undefined;
     setLoading(true);
     setLoadError(null);
     const startedAt = Date.now();
-    loadLiveBundle().then((b) => {
+    loadLiveBundle().then(b => {
       if (!alive) return;
-      // Enforce a minimum loading floor so the loader never flashes away before the page shell is
-      // stable — the audit requires bounded, recoverable loading states.
-      const elapsed = Date.now() - startedAt;
-      const floor = Math.max(0, 700 - elapsed);
-      window.setTimeout(() => {
+      floorTimer = window.setTimeout(() => {
         if (!alive) return;
         setLive(b);
         setLoading(false);
-        // A fully empty bundle means the fetch failed silently; surface it so the user can retry.
-        if (b.meta.counts.kept === 0 && !b.meta.windowStart) {
-          setLoadError('Live data unavailable — the FIRMS snapshot could not be loaded.');
-        } else if (!initial.to) {
-          setRangeState((r) => [r[0], b.meta.windowEnd]);
-        }
-      }, floor);
+        if (b.loadNotice) toast(b.loadNotice);
+        if (!initial.to) setRangeState(r => [r[0], b.meta.windowEnd]);
+      }, Math.max(0, 700 - (Date.now() - startedAt)));
+    }).catch(() => {
+      if (!alive) return;
+      setLoading(false);
+      setLoadError('The bundled FIRMS snapshot could not be loaded. Check the connection and retry.');
     });
-    return () => {
-      alive = false;
-    };
-  }, [initial.to]);
+    return () => { alive = false; window.clearTimeout(floorTimer); };
+  }, [initial.to, loadAttempt, toast]);
 
   const retryLoad = useCallback(() => {
     resetLiveBundle();
     setLive(null);
     setLoading(true);
     setLoadError(null);
-    const startedAt = Date.now();
-    loadLiveBundle().then((b) => {
-      const elapsed = Date.now() - startedAt;
-      const floor = Math.max(0, 700 - elapsed);
-      window.setTimeout(() => {
-        setLive(b);
-        setLoading(false);
-        if (b.meta.counts.kept === 0 && !b.meta.windowStart) {
-          setLoadError('Live data unavailable — the FIRMS snapshot could not be loaded.');
-        } else if (!initial.to) {
-          setRangeState((r) => [r[0], b.meta.windowEnd]);
-        }
-      }, floor);
-    });
-  }, [initial.to]);
+    setLoadAttempt(attempt => attempt + 1);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -502,11 +490,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback((key: StringKey) => translate(settings.lang, key), [settings.lang]);
 
-  const toast = useCallback((msg: string) => {
-    setToastMsg(msg);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToastMsg(null), 4000);
-  }, []);
+
 
   return (
     <Ctx.Provider

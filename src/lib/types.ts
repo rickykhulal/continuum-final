@@ -105,6 +105,8 @@ export interface LiveMeta {
 export interface LiveBundle {
   meta: LiveMeta;
   fires: LiveFire[];
+  /** Browser loading notice; acquisition dates/provenance are never rewritten. */
+  loadNotice?: string;
 }
 
 /** public/data/climate_daily.json — NASA POWER MERRA-2 daily burn-weather anomalies. */

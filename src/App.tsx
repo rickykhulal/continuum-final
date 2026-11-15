@@ -274,7 +274,7 @@ function DataLoadState({ onRetry }: { onRetry: () => void }) {
             </div>
             <h2>Acquiring live FIRMS orbital window</h2>
             <p className="boot-lead">
-              Waking the server, this can take up to a minute.
+              Loading the bundled satellite record. Network requests time out after 10 seconds.
             </p>
             <p className="boot-sub">
               Continuum synchronizes 26 years of MODIS/VIIRS historical calibration with today&apos;s FIRMS near-real-time overpasses (~3 h latency).

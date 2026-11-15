@@ -97,11 +97,12 @@ const endpoints = [
   { method: 'GET', path: '/health', desc: 'Liveness check — returns ok status.' },
   { method: 'GET', path: '/atlas', desc: 'Processed burning calendar — dates, raw/harmonized counts, 90% CI.' },
   { method: 'GET', path: '/diagnosis', desc: 'Bias X-ray — sensor overlap ratio k, 2012 break, calibration metrics.' },
-  { method: 'GET', path: '/outlook', desc: 'Analog season forecasts and fire-weather stress outlook.' },
+  { method: 'GET', path: '/outlook?region_id=nepal', desc: 'Selected-region analog seasons, four-week departure and backtest results. Use a pilot ID or country-<id>.' },
   { method: 'GET', path: '/brief', desc: 'Generated textual/markdown brief for a region.' },
   { method: 'GET', path: '/trend', desc: 'Harmonized historical data for a given area.' },
   { method: 'GET', path: '/live-fires', desc: 'Live fire detections for a region or area.' },
   { method: 'GET', path: '/community/feed', desc: 'Community posts and verified announcements.' },
+  { method: 'POST', path: '/community/vote', desc: 'Send { postId, action: "verify" } to confirm an incident (three distinct voting keys); send { postId, optionIndex } to vote in a poll. Requires X-API-Key.' },
 ];
 
 export function Developers() {

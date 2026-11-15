@@ -47,6 +47,81 @@ drawn polygon; a country id is a pre-indexed border with a pre-computed daily se
 
 ## Endpoints
 
+### Community reports and Discord
+
+Community writes are separate from the read-only scientific record. `data/community.json`
+(or `APP_DATA_PATH/community.json`) is a local JSON array, created empty when absent. Run one API
+process per store; the file store does not provide coordination across server instances.
+
+- `GET /community/feed`: posts and satellite-matched anomaly announcements.
+- `POST /community/posts`: `content` (1–1,000 characters), optional `author`, `type`
+  (`text`, `anomaly`, `poll`), optional `locationName` with numeric `lat`/`lon`.
+  Omit both coordinates for an unlocated report. Polls need 2–6 distinct
+  `pollOptions: [{"text":"Option A"},{"text":"Option B"}]`; the server initializes votes to zero.
+  Optional `imageBase64` is a PNG/JPEG/WebP data URL (decoded size ≤4 MiB).
+  Optional `imageUrl` is an HTTPS image link (≤2,000 characters) on a supported host listed in
+  [Discord bot setup](discord-bot.md). The modal bridge downloads and includes raster bytes;
+  the API validates the link but does not fetch it.
+  Image type, Base64 encoding, signature and size are validated. The report endpoints allow the
+  Base64 envelope plus 64 KiB overhead; the scientific API body limit remains unchanged.
+- `POST /community/vote`: requires a registered `x-api-key`. Send `{postId, action: "verify"}`
+  to confirm an anomaly, or `{postId, optionIndex}` to vote in a poll. Mixing these fields or using
+  another action returns 422. Three distinct confirmation keys produce `community_verified`;
+  satellite confirmation takes precedence. Repeated confirmations are idempotent.
+  Repeating a choice is idempotent; changing it moves that key's vote. These are informal polls:
+  public key issuance is not a verified-person identity system, and a browser reload can get a new key.
+- `POST /community/upvote`: compatibility alias for the verification action, with `postId` only;
+  requires a registered `x-api-key`. One confirmation per
+  key on an anomaly; repeated requests are idempotent. Three distinct keys change Pending or
+  High Risk Weather to `community_verified`. Satellite confirmation takes precedence.
+  `verificationVotes` and `hasVerificationVote` are public; voter identities stay private.
+  Like poll votes, these are key-based confirmations, not verified-person identities.
+- `POST /community/verify`: `postId`; recomputes satellite and weather evidence, retaining
+  community confirmations. Client verification
+  flags, vote totals, and post source are never trusted.
+
+The server checks the report against detection tuples in `public/data/live_fires.json`
+(or the configured `DATA_BUNDLE_PATH`) using Haversine distance ≤15 km. A match supplies
+`verificationStatus: "satellite_confirmed"` and `satelliteMatch` with distance and acquisition
+date, and skips the weather request. This badge describes nearby stored satellite evidence,
+not independent verification of the report or current conditions.
+
+Without a satellite match, located reports request Open-Meteo's current temperature, relative
+humidity and 10 m wind speed. All three strict conditions are required for `weather_warning`:
+temperature **>30°C**, humidity **<30%**, wind **>15 km/h**. Other conditions yield `pending`.
+`weatherData: {temp, humidity, wind}` holds readings in °C, % RH and km/h; `weatherObservedAt`
+records the provider time and `verificationCheckedAt` records the check time. The UI labels these
+as a current weather estimate, not evidence that a fire exists. No historical summer weather is
+substituted for today's conditions. The request times out after six seconds. API failures, invalid
+units/readings or stale times (older than 90 minutes or over 10 minutes in the future) are logged
+with a sanitized reason and fall back to Pending with null weather data. Missing coordinates
+skip the request. The legacy `verified` boolean and announcements remain satellite-only; three
+community votes never acquire a satellite label.
+
+The API and bot load only integration settings from the ignored local `.env`; exported environment
+values take precedence. Other `.env` settings cannot override the scientific bundle configuration.
+Never use a `VITE_` prefix for secrets. An optional HTTPS `DISCORD_WEBHOOK_URL` receives a report
+embed after a web post is saved. If unset, `DISCORD_BOT_TOKEN` plus `DISCORD_REPORT_CHANNEL_ID`
+deliver through Discord's bot API. Images use multipart attachments referenced by the embed. The response
+includes `discordDelivery: "sent" | "failed" | "not_configured"`; failure leaves the report saved
+and is not retried automatically.
+
+`POST /community/discord-sync` accepts `{author, content, imageBase64, imageUrl, lat, lon, locationName, discordMessageId}` from a bot or
+Discord relay. Send `x-discord-secret` matching `DISCORD_SYNC_SECRET`; this route does not use
+the browser API key. Unconfigured sync returns 503; missing/wrong credentials return 401.
+Accepted reports have `source: "discord"`, receive the same satellite/weather check, and are not echoed
+back to Discord. `name` remains an alias for `author`; Discord content can contain up to 2,000
+characters. A stable Discord interaction ID (or legacy message ID) in `discordMessageId` deduplicates retries. Named places without resolved
+coordinates are allowed and remain Pending. The browser checks for new posts every 15 seconds
+while visible and on returning to the tab. Keep the secret in the bot/server environment,
+never in a channel message or client code. See [Discord bot setup](discord-bot.md).
+
+The browser searches Open-Meteo Geocoding after a 350 ms pause (minimum two characters).
+Choosing a result saves its name and coordinates; manual coordinates are available when search
+is unavailable. Search text alone is not treated as a selected location.
+
+### Scientific endpoints
+
 | Route | Class | Purpose |
 | --- | --- | --- |
 | `GET /health` | A | Liveness only; no data access. |

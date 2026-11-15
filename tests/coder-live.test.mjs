@@ -34,7 +34,7 @@ before(async () => {
   fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'continuum-live-contract-'));
   fs.mkdirSync(path.join(fixtureRoot, 'server'));
   fs.mkdirSync(path.join(fixtureRoot, 'dist-server'));
-  for (const file of ['api.mjs', 'live.mjs', 'community-store.mjs']) fs.copyFileSync(path.join(ROOT, 'server', file), path.join(fixtureRoot, 'server', file));
+  for (const file of ['api.mjs', 'live.mjs', 'community-store.mjs', 'community-integrations.mjs', 'community-image.mjs', 'community-env.mjs']) fs.copyFileSync(path.join(ROOT, 'server', file), path.join(fixtureRoot, 'server', file));
   fs.copyFileSync(path.join(ROOT, 'dist-server', 'analytics.mjs'), path.join(fixtureRoot, 'dist-server', 'analytics.mjs'));
   const bootstrap = path.join(fixtureRoot, 'bootstrap.mjs');
   fs.writeFileSync(bootstrap, `${HAS_KEY ? '' : "import { inject } from './server/live.mjs';\ninject({ transport: async () => ({ status: 503, body: 'Offline test fixture' }) });\n"}const { server } = await import('./server/api.mjs');\nserver.listen(Number(process.env.PORT));\n`);

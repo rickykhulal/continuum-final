@@ -1,4 +1,5 @@
 import regionsJson from '../data/regions.json';
+import { fetchJsonWithTimeout, RequestTimeoutError } from './request';
 import type {
   BiasResult,
   Calibration,
@@ -236,24 +237,27 @@ export function refreshLiveBundle(targetDate?: string): Promise<LiveBundle> {
 export function loadLiveBundle(targetDate?: string): Promise<LiveBundle> {
   if (!livePromise) {
     const base = import.meta.env.BASE_URL || './';
+    let timedOut = false;
+    const optional = <T,>(file: string) => fetchJsonWithTimeout<T>(`${base}data/${file}`).catch(error => {
+      timedOut ||= error instanceof RequestTimeoutError;
+      return null;
+    });
+    const snapshot = fetchJsonWithTimeout<LiveBundle>(`${base}data/live_fires.json`).catch(error => {
+      timedOut ||= error instanceof RequestTimeoutError;
+      // A cached snapshot can recover a stalled refresh, but missing data must remain an error.
+      return fetchJsonWithTimeout<LiveBundle>(`${base}data/live_fires.json`, 3000, { cache: 'force-cache' });
+    });
     livePromise = Promise.all([
-      fetch(`${base}data/live_fires.json`).then((r) => {
-        if (!r.ok) throw new Error(`live data ${r.status}`);
-        return r.json() as Promise<LiveBundle>;
-      }),
-      fetch(`${base}data/climate_daily.json`)
-        .then((r) => (r.ok ? (r.json() as Promise<ClimateBundle>) : null))
-        .catch(() => null),
-      fetch(`${base}data/archive_daily.json`)
-        .then((r) => (r.ok ? (r.json() as Promise<ArchiveBundle>) : null))
-        .catch(() => null),
+      snapshot,
+      optional<ClimateBundle>('climate_daily.json'),
+      optional<ArchiveBundle>('archive_daily.json'),
     ])
       .then(([live, climate, archive]) => {
+        if (!live?.meta?.windowStart || !live.meta.windowEnd || !Array.isArray(live.fires)) throw new Error('The bundled FIRMS snapshot is invalid.');
         attachClimate(climate);
         attachArchiveBundle(archive);
-        return alignLiveToRealtime(live, targetDate);
-      })
-      .catch(() => ({ meta: emptyMeta(), fires: [] }) as LiveBundle);
+        return { ...alignLiveToRealtime(live, targetDate), ...(timedOut ? { loadNotice: 'Live API timeout. Using bundled snapshot.' } : {}) };
+      });
   }
   return livePromise;
 }
@@ -262,23 +266,6 @@ export function loadLiveBundle(targetDate?: string): Promise<LiveBundle> {
    Used by the app's retry button so a failed load can be recovered without a page refresh. */
 export function resetLiveBundle(): void {
   livePromise = null;
-}
-
-function emptyMeta(): LiveMeta {
-  // Only reached when the live bundle could not be loaded: every count below is zero, so nothing is
-  // presented as a detection. The window names the rolling archive's span rather than a frozen date
-  // that would silently outlive the snapshot it came from.
-  const now = new Date();
-  return {
-    generatedAt: now.toISOString(),
-    windowStart: addDays(isoDate(now), -6),
-    windowEnd: isoDate(now),
-    sensors: [],
-    sensorMeta: {},
-    counts: { totalQuality: 0, kept: 0, region: 0, globalSampled: 0 },
-    regionDays: {},
-    sources: [],
-  };
 }
 
 export function getRegion(id: string): Region {

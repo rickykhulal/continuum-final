@@ -1384,3 +1384,363 @@ of every staged release file plus `dist` and `dist-server`: exit 0, 232 files / 
 0 findings, **verified** for publishable scope. Ignored local runtime credentials were excluded
 without changing the scanner rules. Baseline report temporary download paths were redacted;
 the untouched original remains in an ignored local log.
+
+### Predictive Risk Dashboard — 2026-11-15 (local review)
+
+The model implementation described in this initial review was superseded by the archive-only
+correction below. This section retains the evidence for the first implementation.
+
+Outlook now begins with a 30-day calendar and Historical Pattern Insights. The existing analog
+seasons, four-week departure, season clock and NASA POWER panels remain below them. No data bundle
+was regenerated and no commit or push was performed for this change.
+
+`src/lib/prediction.ts::predictFutureRisk` uses the selected area's existing harmonized daily
+record. That record already incorporates `public/data/archive_daily.json` through `loadLiveBundle`
+and the archive coverage/constellation correction layer. Archive gaps remain explicitly labelled
+deterministic reconstruction, calibrated to the FIRMS window; the new model does not describe the
+whole 26-year series as raw observed archive. An unknown region ID never borrows another region.
+
+The model holds out the current year, groups month/day on a leap-year template, and computes the
+mean and interpolated P90 within each day-of-year bin. Calendar colours compare the expected
+daily count with the mean and P90 **across the seasonal daily means**. This avoids comparing a
+day's expectation to its own upper-tail statistic as though that were an independently forecast
+count. The within-day P90 is shown separately in the inspector. High plus daily maximum 10 m wind
+strictly above 20 km/h becomes Critical. Wind only joins exact dates within the first seven UTC
+days; later dates remain climatology-only. Neither a missing wind value nor an absent history
+sample becomes zero. Three samples per non-leap calendar day across a full seasonal cycle are
+required to rank risk. Monthly insights exclude incomplete months. Historical activity frequency
+is explicitly a property of the training record, not a calibrated probability of ignition.
+
+| Command / evidence | Output | Status |
+| --- | --- | --- |
+| Baseline `npm ci` | exit 0, 172 packages added; two existing dependency advisories | **verified** |
+| Baseline `npm run build` | exit 0, zero TypeScript errors; `.outlook-baseline-build.log` | **verified** |
+| Baseline `npm test` | 249 total, 245 passed, 0 failed, 4 skipped; `.outlook-baseline-test.log` | **verified** for executed cases |
+| Baseline `npm run e2e` against preview :4174 | 75/102 before `Cannot read properties of null (reading 'focus')`; `.outlook-baseline-e2e-report.log` | **partial** |
+| Final `npm run build` | exit 0, zero TypeScript errors; `.outlook-build.log` | **verified** |
+| Final `npm test` | 260 total, 256 passed, 0 failed, 4 existing skips; `.outlook-test.log` | **verified** for executed cases |
+| `node scripts/e2e-outlook.mjs` against production API :8787 | 18/18; fixed peak-season clock and explicit Open-Meteo fixtures; `docs/outlook-e2e-report.json` | **verified** for tested paths |
+| Real `fetchWindForecast(-29.1667, -67.5)` through the built analytics module | 7 Open-Meteo days, 2026-11-15 to 2026-11-21; first 9 km/h from 336°, last 10.7 km/h from 175° | **verified** for this provider request |
+| `npm run validate` | 22/23; existing VIIRS-SNPP freshness envelope `9999-99-99..0000-00-00` lies outside stored window `2026-11-07..2026-11-14`; all 20 manifest files and all 10 dist data files match; `.outlook-validate.log` | **partial** |
+| `npm run smoke` | 49/49; `.outlook-smoke.log` | **verified** |
+| `npm run secret-scan` | exit 1; 517 files scanned, only finding is the existing ignored `.env` file's presence, 0 unscanned; `.outlook-secret-scan.log`. The scanner never reads `.env` contents. | **partial** |
+| `E2E_ORIGIN=http://127.0.0.1:8787 npm run e2e` | 77/102 before the same null-focus exception; both legacy Outlook checks passed; `.outlook-e2e-report.json.log` | **partial** |
+
+The focused browser suite covers all 30 dates, the seven-day wind boundary, Critical classification,
+explanation contents, preservation/order of existing features, click/keyboard selection, mobile
+fit, reduced motion, light theme, HTTP failure, stale dates, retry, rapid region changes, CSP and
+absence of runtime exceptions. Desktop/mobile screenshots were inspected at
+`.shots/outlook-desktop.png` and `.shots/outlook-mobile.png`; these show **test fixture winds and
+a fixed date**, not actual weather. A held-out skill evaluation of this new climatology model,
+regional wind representativeness and calibrated ignition probabilities are **not verified**.
+The four existing skipped unit cases concern the optional live-feed HTTP service.
+
+The broad e2e failures already occur before these changes, spanning older Watch, Atlas, navigation
+and country-metric checks. The script catches its fatal exception and exits 0, so the report's
+failure is recorded here rather than treating the process exit as success. The unchanged snapshot
+freshness metadata and existing local `.env` were left in place. Original generated broad reports
+were restored after retaining this run's output in the named ignored logs. No check was softened.
+
+### Archive-only predictive risk correction — 2026-11-15 (local review)
+
+The calendar now subscribes directly to `useStore().region`. `Outlook.tsx` no longer passes the
+general-purpose record into it. Its independent loader fetches only `public/data/archive_daily.json`;
+the predictor selects the exact `regions[region.id]` block. It never calls `getRecord`, the
+reconstruction, live-window calibration or a country/pilot alias. An unavailable file or unmatched
+ID produces **No Data Available**. The user can explicitly select an available archive area from
+that state; the UI never silently substitutes it for a country border or custom area.
+
+The decoder uses the file's `start` date and per-sensor coverage ranges. Covered days omitted from
+the sparse tuples are observed zeros; uncovered dates are absent. Each published sensor contributes
+its raw count once. Overlapping ranges and identical duplicate tuples cannot double counts;
+conflicting or invalid counts exclude the affected day. These are **raw sensor detections**, not
+unique fires or harmonized counts. The method panel names this unit and the limitation that changing
+sensor availability affects comparisons across years. No reconstructed value enters this model.
+
+The prior-year holdout, leap-day separation, DOY means/P90, seasonal colour thresholds and strictly
+greater-than-20 km/h Critical gate are retained. Wind is joined to exact dates within seven days;
+days 8–30 remain climatology-only. Insights use complete observed months and state the number of
+eligible and missing years in the previous 20-year window. Every calendar cell now displays its
+expected count, so two areas can have visibly different predictions even when both classify Low.
+
+Current-date browser evidence, from the real archive and the actual **Change area** controls:
+
+| Archive area | 2026-11-15 mean | DOY P90 | Computed peak month | November years with activity, 2006–2025 |
+| --- | ---: | ---: | --- | --- |
+| Nepal | 85.0 | 243.5 | April | 20 / 20 |
+| California | 119.6 | 350.5 | August | 20 / 20 |
+| Chilecito | 2.6 | 5.5 | August | 19 / 20 |
+
+All three histories contain 9,192 observed dates before 2026. Nepal and California both classify
+Low in the current 30-day window, with different daily counts. Chilecito has a different mixture
+of Low/Moderate/High dates before applying forecast wind. `country-nepal` has no exact key in the
+archive and is **No Data Available**, rather than borrowing the larger Nepal pilot bounding box.
+
+| Command / evidence | Output | Status |
+| --- | --- | --- |
+| Baseline `npm ci` | First attempt hit the existing preview's esbuild lock; after stopping that preview/helper, retry exited 0 and preview was restarted | **verified** |
+| Baseline `npm run build`; `npm test` | exit 0; 256 passed, 0 failed, 4 existing skips | **verified** for executed cases |
+| Baseline `npm run e2e` against preview :4174 | 77/102 before the existing null-focus exception; `.outlook-fix-baseline-e2e-report.log` | **partial** |
+| Final `npm run build` | exit 0; zero TypeScript errors; Vite 9.57 s; `.outlook-fix-build.log` | **verified** |
+| Final `npm test` | 262 total; 258 passed, 0 failed, 4 existing skips; `.outlook-fix-test.log` | **verified** for executed cases |
+| `node scripts/e2e-outlook.mjs` against production API :8787 | 34/34; `docs/outlook-e2e-report.json` | **verified** for tested paths |
+| `npm run validate` | 22/23, exit 1; same pre-existing invalid VIIRS-SNPP freshness envelope; all shipped hashes and dist/data parity verified; `.outlook-fix-validate.log` | **partial** |
+| `npm run smoke` | 49/49, exit 0; `.outlook-fix-smoke.log` | **verified** |
+| `npm run secret-scan` | exit 1; 535 files, one finding for the existing ignored `.env` presence, 0 unscanned; `.outlook-fix-secret-scan.log` | **partial** |
+| `E2E_ORIGIN=http://127.0.0.1:8787 npm run e2e` | 77/102 before the same baseline null-focus exception; both legacy Outlook checks passed; `.outlook-fix-final-e2e-report.log` | **partial** |
+| `git diff --check` | exit 0 | **verified** |
+
+The focused suite uses the shipped archive for every browser calculation. Its threshold and failure
+checks use a peak date derived from the archive and explicit wind fixtures. The final three checks
+remove the test clock and provider interception, select Nepal, California and Chilecito through the
+top bar, and compare the displayed date, mean, P90 and insights to the archive. Forecast retrieval
+may still be pending during those current-date checks; live wind across all three areas is **not
+verified** by them. Threshold, horizon, failure, retry and stale-response behavior is **verified**
+with fixtures. Archive HTTP failure, retry, exact-key no-data behavior, and independence from a
+failed live-record fetch are also covered. Screenshots inspected: `.shots/outlook-nepal-today.png`,
+`.shots/outlook-california-today.png`, `.shots/outlook-mobile.png` (the mobile capture uses fixture
+wind and a test date).
+
+In-app browser control was **blocked** by helper initialization (`failed to write kernel assets`,
+OS error 3) on both attempts, so it could not refresh the user's already open tab. The separate
+automated Chrome checks above ran successfully. The archived series and all broader app records
+remain unchanged. Nothing was committed or pushed.
+
+### Community Hub, geocoding and Discord — 2026-11-15 (local review)
+
+The Community feed now has a centered 760px column, location search with debounce and stale-response
+protection, optional manual coordinates, persisted polls, source badges, and server-derived satellite
+status. The companion is hidden on narrow Community screens after screenshots showed it covering
+poll content. The Developer Portal's shared `PageHeader` export is preserved with an explicit React
+type import.
+
+Reports are checked against the stored `live_fires.json` detection tuples using a 15 km Haversine
+radius. A matched report includes distance and acquisition date; the UI explains that nearby stored
+evidence does not independently confirm the report or current conditions. Client source, vote totals,
+and verification flags cannot set these fields. The old manual Verify action is removed; the existing
+API recheck route recomputes evidence and does not duplicate announcements.
+
+The requested `data/community.json` was deleted and regenerated as `[]` (previously 65 posts).
+The focused browser run uses an isolated temporary database, and the unit/API fixtures are isolated
+as well. After verification the user's database still contains zero posts. Other local data and
+existing API credentials were preserved. No archive, live bundle, or scientific record was rebuilt.
+
+Discord outbound delivery uses a server-only webhook, disables mention notifications, times out after
+five seconds, and cannot turn a saved report into a failed submission. Inbound sync requires its own
+server secret, sets `source: discord`, checks the same satellite evidence, and never echoes a report
+back to Discord. Missing configuration returns 503; wrong/missing credentials return 401. The API
+contract test explicitly checks that disabled-service response. Live channel delivery is **not
+verified** because Discord credentials are not configured. Unit tests intercept outbound requests;
+the inbound endpoint and rendered Discord report are **verified** with an isolated local relay request.
+
+| Command / evidence | Output | Status |
+| --- | --- | --- |
+| Baseline `npm ci` | exit 0; `.community-baseline-install.log` | **verified** |
+| Baseline `npm run build`; `npm test` | exit 0; 258 passed, 0 failed, 4 existing skips; baseline build/test logs | **verified** for executed cases |
+| Baseline `npm run e2e` against preview :4174 | 77/102, existing null-focus exception; `.community-baseline-e2e-report.log` | **partial** |
+| Final `npm run build` | exit 0; zero TypeScript errors; Vite 9.11 s; `.community-build.log` | **verified** |
+| Final `npm test` | 275 total; 271 passed, 0 failed, 4 existing skips; `.community-test.log` | **verified** for executed cases |
+| `node scripts/e2e-community.mjs` with `npm run dev -- --strictPort` on :5173 | 23/23; `docs/community-e2e-report.json`; no browser runtime exceptions | **verified** |
+| `npm run smoke` | 49/49, exit 0; `.community-smoke.log` | **verified** |
+| `npm run validate` | 22/23, exit 1; existing VIIRS-SNPP `9999-99-99..0000-00-00` freshness error; 10 dist/data files match; `.community-validate.log` | **partial** |
+| `npm run secret-scan` | exit 1; 558 files, one finding for existing ignored `.env` presence, 0 unscanned; `.community-secret-scan.log` | **partial** |
+| `E2E_ORIGIN=http://127.0.0.1:8787 npm run e2e` | 77/102, same baseline null-focus exception; `.community-final-e2e-report.log` | **partial** |
+| `git diff --check` | exit 0 | **verified** |
+
+The focused browser checks use the real Open-Meteo search: Biratnagar, Nepal resolves to
+26.45505, 87.27007 and its saved anomaly is Pending against this stored FIRMS window. Tests create
+a poll, vote, repeat a vote, change choice, refresh, and reload to verify backend persistence. They
+also check incomplete coordinates, a confirmed report at an actual stored detection, an authenticated
+Discord relay report, filters, desktop centering, 390px mobile layout, mobile companion overlap,
+provider failure, delayed search races, keyboard selection, and clearing a stale selected location.
+Only provider error/race cases use explicit fixtures; no live Discord message was sent. Screenshots
+inspected: `.shots/community-desktop.png` and `.shots/community-mobile.png`.
+
+Changed files for this task (earlier Outlook edits remain intact):
+
+- `.env.example`
+- `docs/api.md`
+- `docs/validation.md`
+- `docs/community-e2e-report.json`
+- `scripts/e2e-community.mjs`
+- `server/api.mjs`
+- `server/community-store.mjs`
+- `server/community-integrations.mjs`
+- `src/lib/geocoding.ts`
+- `src/pages/Community.tsx`
+- `src/styles.css`
+- `tests/api.test.mjs`
+- `tests/coder-live.test.mjs`
+- `tests/community-auth.test.mjs`
+- `tests/community-model.test.mjs`
+
+Ignored local state reset: `data/community.json`. Generated build output and task logs are local.
+The dev server is running at `http://127.0.0.1:5173/#/community` with the regular API on :8787.
+Nothing was committed or pushed.
+
+### Laika lighting, image attachments and live Gemini/Discord bridge — 2026-11-15
+
+Laika now uses ambient intensity 1.5, directional intensity 3 and spot intensity 2, with local
+generated environment reflections. No external HDR request is needed. The inspected desktop
+capture `.shots/community-images-and-laika.png` shows a bright suit and visible face texture.
+
+Web composition uses FileReader, an image preview/removal control and validated PNG/JPEG/WebP
+attachments up to 4 MiB (24 megapixels in the browser). Image data URLs persist in the JSON store
+and render in the feed. The report routes accept the Base64 envelope without increasing scientific
+API limits. Discord multipart embeds reference attached image bytes. Web delivery uses an optional
+webhook or the configured bot/channel. Incoming `author` and legacy `name` are supported; stable
+Discord message IDs deduplicate retries. Existing posts and earlier Outlook changes are preserved.
+
+The bot is runnable with `npm run discord:bot`. It selects one server text channel, ignores bot
+and webhook messages, limits queued work, sends original text/image content to Gemini, and resolves
+only unique named places or explicitly supplied coordinates. Gemini classifies relevance; the server
+alone derives satellite status. Unresolved named places remain visible with no coordinates and a
+Pending badge. The page refreshes every 15 seconds while visible and on returning to the tab.
+Poll voting, repeat-click idempotency, choice changes and persistence remain **verified**; optional
+poll-result announcements are not enabled.
+
+User-supplied credentials and channel configuration were stored only in the ignored local `.env`.
+The loader reads an allowlist of integration settings and preserves exported environment values;
+it cannot change unrelated data-bundle settings. The initial Gemini 2.5 Flash request returned 404
+with a retired-for-new-users response. Model discovery and live requests identified
+`gemini-3.1-flash-lite` as available; it is the configured default. The live check subsequently
+verified both text and image input. No credential values or raw SDK errors were logged.
+
+| Command / evidence | Output | Status |
+| --- | --- | --- |
+| Baseline `npm run e2e` against running preview | 77/102, same existing null-focus exception; `.bridge-baseline-e2e-report.log` | **partial** |
+| Baseline `npm ci`; `npm run build`; `npm test` | exit 0; baseline build 8.55 s; 271 passed, 0 failed, 4 existing skips; `.bridge-baseline-*.log` | **verified** for executed cases |
+| `npm install discord.js @google/generative-ai` | exit 0; 25 packages added; installed 14.28.1 / 0.24.1; `.bridge-install.log` | **verified** |
+| Final `npm run build` | exit 0, zero TypeScript errors, Vite 9.50 s; `.bridge-build.log` | **verified** |
+| Final `npm test` | 291 total; 287 passed, 0 failed, 4 existing skips; `.bridge-test.log` | **verified** for executed cases |
+| `node scripts/e2e-community.mjs` against `npm run dev -- --strictPort` | 30/30, no runtime exceptions; `docs/community-e2e-report.json` | **verified** |
+| `npm run discord:check` | Discord login/channel permissions verified; Gemini 3.1 Flash Lite text/image analysis verified; 0 messages sent; `.bridge-connectivity.log` | **verified** |
+| `npm run api`; `npm run discord:bot` | API :8787 integrity PASS; bot emitted listening confirmation for the user-specified channel | **verified** for startup |
+| `npm run smoke` | 49/49, exit 0; `.bridge-smoke.log` | **verified** |
+| `npm audit --omit=dev --json` | 0 production vulnerabilities; `.bridge-audit.log` | **verified** |
+| `npm run validate` | 22/23, same existing VIIRS-SNPP freshness range failure; all 10 dist/data files match; `.bridge-validate.log` | **partial** |
+| `npm run secret-scan` | 582 files, 1 finding for ignored local `.env` presence, 0 unscanned; `.bridge-secret-scan.log` | **partial** |
+| Exact credential scan of Git-visible files plus dist/ and dist-server/ | 329 files, 0 matches for the three supplied credentials; `.bridge-credential-scan.log` | **verified** |
+| `git diff --check` | exit 0 | **verified** |
+
+The browser suite exercises image selection, decoding, removal, oversize rejection, persisted web
+images, incoming Discord image posts appearing without manual refresh, page reload, polls, geocoding
+and mobile layout. Boundary tests verify 4 MiB decoded payloads reach storage and larger ones are
+rejected. Bot tests cover schema parsing, model failure, attachments, ambiguous geocoding, retries,
+duplicates, other channels, loop prevention and replies based on the server's actual satellite status.
+Multipart delivery is **verified** with an intercepted transport. Posting a test message into the
+live Discord channel and observing a complete round trip is **not verified**; live checks tested
+provider access without posting. The real bot is running for user reports.
+
+Files changed in this extension:
+
+- `package.json`, `package-lock.json`, `.env.example`
+- `src/components/PetCompanion.tsx`, `src/pages/Community.tsx`, `src/styles.css`
+- `server/api.mjs`, `server/community-store.mjs`, `server/community-integrations.mjs`
+- `server/community-env.mjs`, `server/community-image.mjs`
+- `scripts/discord-bot.mjs`, `scripts/discord-bridge.mjs`, `scripts/e2e-community.mjs`
+- `tests/api.test.mjs`, `tests/coder-live.test.mjs`, `tests/community-auth.test.mjs`
+- `tests/community-model.test.mjs`, `tests/discord-bridge.test.mjs`
+- `docs/api.md`, `docs/discord-bot.md`, `docs/validation.md`, `docs/community-e2e-report.json`
+
+Local ignored configuration updated: `.env`. The dev server, API and bot are running locally.
+Nothing was committed or pushed. Setup and deployment notes: `docs/discord-bot.md`.
+
+### Discord buttons/modals and satellite/weather/community verification — 2026-11-15
+
+The running bot now subscribes only to InteractionCreate with the Guilds intent. Startup upserts
+only the guild's admin-only `/setup-report` command. An administrator posts the public panel in
+its current text channel; members use the four-field incident modal. Each submission is privately
+acknowledged before queued network work. Explicit coordinates bypass Gemini; named places are
+parsed into comma-separated components and resolved uniquely with Open-Meteo Geocoding. The
+live check originally exposed a missing-comma bug for “Biratnagar Nepal”; the extraction prompt
+was corrected and the real check now resolves 26.45505, 87.27007. Optional image links produce
+validated bounded raster uploads and retain their source URL. Stable interaction IDs deduplicate
+API retries. Ordinary messages are ignored, and errors remain private without raw SDK logging.
+
+The API checks satellite tuples within 15 km first and returns early on a match. Otherwise it
+requests current Open-Meteo temperature, humidity and wind, with a six-second timeout, metric
+unit validation and timestamp checks. Only temperature >30°C AND humidity <30% AND wind >15 km/h
+produces `weather_warning`. Other weather or provider failure yields Pending. Current estimates,
+provider time and check time are stored; the UI shows orange weather, yellow Pending, green
+satellite and blue community badges. Three distinct registered voting keys confirm an anomaly;
+repeat votes are idempotent and private voter identities stay out of responses. Human evidence
+never inherits the satellite-only legacy `verified` flag or satellite announcements. Poll votes
+remain separate. No production provider fixtures or historical summer conditions were introduced.
+
+| Command / evidence | Output | Status |
+| --- | --- | --- |
+| Baseline `npm ci`; `npm run build`; `npm test` | exit 0; 287 passed, 0 failed, 4 existing skips; `.modal-baseline-install.log`, `.modal-baseline-build.log`, `.modal-baseline-test.log` | **verified** for executed cases |
+| Baseline `npm run e2e` against running preview | 77/102, existing null-focus exception; `.modal-baseline-e2e.log`, `.modal-baseline-e2e-report.log` | **partial** |
+| Final `npm run build` | exit 0; zero TypeScript errors; Vite 12.31 s; `.modal-build.log` | **verified** |
+| Final `npm test` | 312 total, 308 passed, 0 failed, 4 existing skips; `.modal-test.log` | **verified** for executed cases |
+| `node scripts/e2e-community.mjs` against the dev server | 34/34, isolated store; `docs/community-e2e-report.json` | **verified** |
+| Real `verifyCommunityReport` calls for California desert and London | both Pending under today's weather; `.modal-live-weather.log` | **verified** |
+| `npm run discord:check` | real Discord login/channel permissions and Gemini text/image/modal location verified; 0 messages sent; `.modal-connectivity.log` | **verified** |
+| `npm run api`; `npm run discord:bot` | API :8787 integrity PASS; guild setup-report registration and interaction-only readiness; `.modal-api.log`, `.modal-bot.log` | **verified** for startup |
+| Read back guild commands with Discord REST | setup-report exists, default_member_permissions=8 (Administrator); `.modal-command-registration.log`; 0 messages sent | **verified** |
+| `npm run smoke` | 49/49, exit 0; `.modal-smoke.log` | **verified** |
+| `npm run validate` | 22/23; existing VIIRS-SNPP malformed freshness range; 10 dist/data files identical; `.modal-validate.log` | **partial** |
+| `npm run secret-scan` | 598 files, one finding for ignored local .env presence, zero unscanned; `.modal-secret-scan.log` | **partial** |
+| Exact configured credential scan of Git-visible files plus dist/ and dist-server/ | 333 files, zero matches; `.modal-credential-scan.log` | **verified** |
+| `git diff --check` | exit 0 | **verified** |
+
+The focused browser comparison used explicit current-weather fixtures: California 34°C/20% RH/
+25 km/h rendered High Risk Weather; London 8°C/80% RH/5 km/h rendered Pending. Three distinct keys
+changed the badge to Community Verified, and repeat votes were disabled. Actual stored FIRMS
+coordinates exercised satellite precedence, while Biratnagar geocoding used the real service.
+Images, polling, poll votes, location selection and layout remain covered. Inspected screenshots:
+`.shots/community-weather-comparison.png`, `.shots/community-human-confirmed.png`.
+
+Live weather at the checked 2026-11-15T15:30:00Z observation was 7.6°C/56% RH/3.9 km/h at
+34,-116 and 10.2°C/91% RH/9.4 km/h at London. Both correctly stayed Pending; a desert location
+does not automatically imply today's weather meets the hot/dry/windy thresholds. No regular
+community posts or Discord channel messages were created by these checks. The user's earlier
+free-text bridge round trip was reported working; a human click-through of the new live Discord
+modal is **not verified**. Automated interaction tests verify builders, permissions, private
+acknowledgement ordering, queue overflow, coordinates, images, failures and deduplicated forwarding.
+Follow `docs/discord-bot.md` to run `/setup-report` and submit the first modal report.
+
+Exact source, test and evidence files changed for this task:
+
+- `scripts/discord-bot.mjs`, `scripts/discord-bridge.mjs`, `scripts/discord-interactions.mjs`, `scripts/e2e-community.mjs`
+- `server/api.mjs`, `server/community-store.mjs`, `server/community-integrations.mjs`, `server/community-image.mjs`
+- `src/pages/Community.tsx`, `src/styles.css`
+- `tests/community-auth.test.mjs`, `tests/community-weather.test.mjs`, `tests/discord-interactions.test.mjs`, `tests/helpers/community-api.mjs`
+- `docs/api.md`, `docs/discord-bot.md`, `docs/validation.md`, `docs/community-e2e-report.json`
+
+Earlier Outlook, Laika and other local changes remain intact. Scientific data was not refreshed.
+Existing generated validation and smoke reports were restored byte-for-byte after these checks;
+this section and task logs record the current results. API, dev server and interaction bot are
+running locally. Nothing was committed or pushed.
+
+### Final repository release — 2026-11-15
+
+The remote is now `https://github.com/rickykhulal/continuum-final.git`, branch `main`.
+The release adds 14 Laika facts and makes her tether/float/drag use the same screen coordinates.
+Startup, live polling and key acquisition have bounded requests; a cached snapshot preserves its
+published dates, and unavailable snapshots show Retry. The Developer Portal and OpenAPI expose
+regional `GET /outlook?region_id=...` and `POST /community/vote` with `action: "verify"`, preserving
+poll votes and the older upvote alias. Render configuration now describes a persistent web/API
+service and a separate Discord worker, with server-side environment instructions and Gemini 3.8.
+
+| Evidence | Result | Status |
+| --- | --- | --- |
+| Baseline npm ci/build/test | exit 0; build 10.89 s; 308 passed, 4 skips | **verified** |
+| Baseline browser sweep | 75/102; existing null-focus exception | **partial** |
+| Release npm run build | exit 0; zero TypeScript errors; see `.release-build.log` | **verified** |
+| First release npm test | 312 passed, zero failed, four existing skips | **verified** for that run |
+| Last repeat npm test | 311 passed, one failed, four skips; `class A must limit at 120/min` assertion failed | **partial** |
+| node scripts/e2e-release.mjs | 15/15; `docs/release-e2e-report.json` | **verified** |
+| npm run validate | 22/23; existing VIIRS-SNPP sentinel freshness range; all ten dist/data files identical | **partial** |
+| Gemini 3.8 model discovery | model listed for this account | **verified** for discovery |
+| Gemini 3.8 generation check | upstream HTTP 503; Discord login/channel permissions succeeded | **blocked** on provider availability |
+| Render deployment | blueprint and Environment-tab instructions prepared; no deployment performed | **not verified** |
+
+The focused browser run covers the fallback toast, missing-snapshot retry, API documentation,
+Laika's tether during drag/resize/keyboard movement, and on-demand facts. The screenshot
+`.shots/release-laika-tether.png` was inspected. Earlier Community/Outlook checks and their limits
+remain recorded above. At the user's deadline instruction, further test debugging and the repeated
+broad E2E run were stopped; no check was weakened. The requested commit title refers to the first
+312-pass release run; the later rate-limit assertion failure is retained here explicitly.
+Scientific data was not refreshed. The local .env and runtime data remain excluded from Git.

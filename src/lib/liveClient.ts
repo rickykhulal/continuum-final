@@ -26,6 +26,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiFetch } from './api';
+import { withRequestTimeout, RequestTimeoutError } from './request';
 
 /** Shape of one live fire entry – matches the LiveFire tuple type used in the bundle. */
 export type LiveFire = [number, number, number, number, number, number]; // [lat, lon, frp, sensorId, confidence, unixSeconds]
@@ -191,28 +192,38 @@ export function useLiveFirms(
 ): LivePayload & { refresh: () => void } {
   const lastGood = useRef<LiveGood | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted = useRef(false);
+  const inFlight = useRef(false);
   const [state, setState] = useState<LivePayload>(LIVE_INITIAL);
 
   const fetchLiveFirms = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     let httpStatus = 0;
     let body: (Partial<LiveFirmsResponse> & LiveFirmsErrorBody) | null = null;
     try {
-      const res = await apiFetch('/live-firms', {
+      const result = await withRequestTimeout(async signal => {
+        const res = await apiFetch('/live-firms', {
         method: 'GET',
         headers: { Accept: 'application/json' },
+        signal,
         // NOTE: In production the API server must be running (npm run api).
         // The server (server/api.mjs) handles the rate class and the key.
       });
-      httpStatus = res.status;
-      body = (await res.json().catch(() => null)) as
+        return { status: res.status, body: await res.json().catch(() => null) };
+      });
+      httpStatus = result.status;
+      body = result.body as
         | (Partial<LiveFirmsResponse> & LiveFirmsErrorBody)
         | null;
     } catch (err) {
       body = {
         error: 'offline',
-        message: err instanceof Error ? err.message : 'unknown network error',
+        message: err instanceof RequestTimeoutError ? 'Live API timeout. Using bundled snapshot.' : err instanceof Error ? err.message : 'unknown network error',
       };
     }
+    inFlight.current = false;
+    if (!mounted.current) return;
 
     const next = classifyLiveResponse(httpStatus, body, lastGood.current);
     if (next.provenance === 'live' && next.meta) {
@@ -227,10 +238,12 @@ export function useLiveFirms(
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     fetchLiveFirms();
     timerRef.current = setInterval(fetchLiveFirms, intervalMs);
 
     return () => {
+      mounted.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }

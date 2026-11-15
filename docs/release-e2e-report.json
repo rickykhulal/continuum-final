@@ -1,0 +1,220 @@
+{
+  "status": "verified",
+  "origin": "http://127.0.0.1:8787",
+  "providers": "Bundled data; explicit archive/live API timeout and snapshot HTTP failure fixtures; no posts or Discord messages sent.",
+  "pass": 15,
+  "total": 15,
+  "results": [
+    {
+      "name": "A stalled archive cannot keep bundled startup loading forever",
+      "pass": true,
+      "detail": {
+        "elapsedMs": 11603,
+        "toast": "Live API timeout. Using bundled snapshot."
+      }
+    },
+    {
+      "name": "Developer portal documents regional outlook and verification action",
+      "pass": true
+    },
+    {
+      "name": "Stalled live API falls back after ten seconds with a toast",
+      "pass": true,
+      "detail": {
+        "elapsedMs": 10145
+      }
+    },
+    {
+      "name": "Map identifies its bundled snapshot after the timeout",
+      "pass": true
+    },
+    {
+      "name": "Both tether paths attach to the suit center and viewport corner",
+      "pass": true,
+      "detail": {
+        "x": 1252,
+        "y": 534.6007080078125,
+        "w": 150,
+        "h": 150,
+        "start": [
+          1422,
+          804
+        ],
+        "end": [
+          1327,
+          609.6006924700617
+        ],
+        "paths": [
+          "M 1422 804 C 1382 804, 1367 669.6006924700617, 1327 609.6006924700617",
+          "M 1422 804 C 1382 804, 1367 669.6006924700617, 1327 609.6006924700617"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          1422,
+          804
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Tether cannot intercept pointer events",
+      "pass": true
+    },
+    {
+      "name": "Tether stays attached during drag -80,-40",
+      "pass": true,
+      "detail": {
+        "x": 1172,
+        "y": 495.174560546875,
+        "w": 150,
+        "h": 150,
+        "start": [
+          1422,
+          804
+        ],
+        "end": [
+          1247,
+          570.1745665706677
+        ],
+        "paths": [
+          "M 1422 804 C 1363.6666666666667 804, 1305.3333333333333 630.1745665706677, 1247 570.1745665706677",
+          "M 1422 804 C 1363.6666666666667 804, 1305.3333333333333 630.1745665706677, 1247 570.1745665706677"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          1422,
+          804
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Tether stays attached during drag -170,-100",
+      "pass": true,
+      "detail": {
+        "x": 1082,
+        "y": 435.7324523925781,
+        "w": 150,
+        "h": 149.99996948242188,
+        "start": [
+          1422,
+          804
+        ],
+        "end": [
+          1157,
+          510.73246252442357
+        ],
+        "paths": [
+          "M 1422 804 C 1333.6666666666667 804, 1245.3333333333333 570.7324625244236, 1157 510.73246252442357",
+          "M 1422 804 C 1333.6666666666667 804, 1245.3333333333333 570.7324625244236, 1157 510.73246252442357"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          1422,
+          804
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Tether stays attached during drag -250,-150",
+      "pass": true,
+      "detail": {
+        "x": 1002,
+        "y": 386.26678466796875,
+        "w": 150,
+        "h": 150,
+        "start": [
+          1422,
+          804
+        ],
+        "end": [
+          1077,
+          461.2667910267306
+        ],
+        "paths": [
+          "M 1422 804 C 1307 804, 1192 521.2667910267305, 1077 461.2667910267306",
+          "M 1422 804 C 1307 804, 1192 521.2667910267305, 1077 461.2667910267306"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          1422,
+          804
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Dragging moves Laika without opening a fact",
+      "pass": true,
+      "detail": {
+        "x": 1002,
+        "y": 386.558349609375,
+        "w": 150,
+        "h": 150,
+        "start": [
+          1422,
+          804
+        ],
+        "end": [
+          1077,
+          461.55835862914694
+        ],
+        "paths": [
+          "M 1422 804 C 1307 804, 1192 521.5583586291469, 1077 461.55835862914694",
+          "M 1422 804 C 1307 804, 1192 521.5583586291469, 1077 461.55835862914694"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          1422,
+          804
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Resize clamps Laika and reconnects tether",
+      "pass": true,
+      "detail": {
+        "x": 770,
+        "y": 387.713623046875,
+        "w": 150,
+        "h": 150,
+        "start": [
+          920,
+          720
+        ],
+        "end": [
+          845,
+          462.71362013071905
+        ],
+        "paths": [
+          "M 920 720 C 880 720, 885 522.713620130719, 845 462.71362013071905",
+          "M 920 720 C 880 720, 885 522.713620130719, 845 462.71362013071905"
+        ],
+        "pointerEvents": "none",
+        "viewport": [
+          920,
+          720
+        ],
+        "bubble": false
+      }
+    },
+    {
+      "name": "Keyboard movement keeps the tether attached",
+      "pass": true
+    },
+    {
+      "name": "Laika still shares an educational fact on demand",
+      "pass": true
+    },
+    {
+      "name": "Missing snapshot shows a recoverable error rather than invented zero detections",
+      "pass": true
+    },
+    {
+      "name": "Retry recovers after the snapshot becomes available",
+      "pass": true
+    }
+  ]
+}
