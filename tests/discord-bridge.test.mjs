@@ -7,7 +7,7 @@ import { decodeCommunityImage, MAX_IMAGE_BYTES } from '../server/community-image
 import { loadCommunityEnv } from '../server/community-env.mjs';
 import { createCommunityStore } from '../server/community-store.mjs';
 import { sendDiscordReport } from '../server/community-integrations.mjs';
-import { BridgeError, createGroqAnalyzer, createGeminiAnalyzer, explicitCoordinates, resolveReportLocation, downloadReportImage, forwardDiscordReport, createDiscordMessageHandler } from '../scripts/discord-bridge.mjs';
+import { BridgeError, parseUserInput, explicitCoordinates, resolveReportLocation, downloadReportImage, forwardDiscordReport, createDiscordMessageHandler } from '../scripts/discord-bridge.mjs';
 
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
 const temporary = fn => {
@@ -17,9 +17,9 @@ const temporary = fn => {
 
 test('integration env loader preserves exported values and ignores unrelated .env settings', () => temporary(dir => {
   const file = path.join(dir, '.env');
-  fs.writeFileSync(file, 'DISCORD_BOT_TOKEN="fixture"\nGEMINI_MODEL=fixture-model\nPORT=1\nDATA_BUNDLE_PATH=bad\n');
+  fs.writeFileSync(file, 'DISCORD_BOT_TOKEN="fixture"\nDISCORD_REPORT_CHANNEL_NAME=fixture-name\nPORT=1\nDATA_BUNDLE_PATH=bad\n');
   const env = { DISCORD_BOT_TOKEN: '' }; loadCommunityEnv(env, file);
-  assert.deepEqual(env, { DISCORD_BOT_TOKEN: '', GEMINI_MODEL: 'fixture-model' });
+  assert.deepEqual(env, { DISCORD_BOT_TOKEN: '', DISCORD_REPORT_CHANNEL_NAME: 'fixture-name' });
 }));
 
 test('image validation rejects URL fetches, SVG, incorrect MIME, malformed encoding and oversize data', () => {
@@ -66,18 +66,12 @@ test('bot-token delivery supports web cross-posts without a webhook', async () =
   assert.equal(request.headers.Authorization, 'Bot fixture');
 });
 
-test('Groq receives text and image and returns only classification plus location, never invented coordinates', async () => {
-  let received;
-  const analyze = createGroqAnalyzer({ generate: async input => { received = input; return JSON.stringify({ isFireReport: true, locationName: 'Biratnagar, Nepal', lat: 12, lon: 34, verificationStatus: 'satellite_confirmed' }); } });
-  assert.deepEqual(await analyze({ content: 'Smoke', imageBase64: png }), { isFireReport: true, locationName: 'Biratnagar, Nepal' });
-  assert.equal(received.content, 'Smoke');
-  assert.equal(received.image.mimeType, 'image/png');
-});
-
-test('Groq malformed or unavailable responses fail closed without leaking upstream errors', async () => {
-  for (const generate of [async () => 'not JSON', async () => '{"isFireReport":"true","locationName":null}', async () => { throw new Error('private upstream details'); }]) {
-    await assert.rejects(createGroqAnalyzer({ generate })({ content: 'Fixture' }), error => error instanceof BridgeError && !error.message.includes('private upstream'));
-  }
+test('parseUserInput handles empty and non-empty text input deterministically', () => {
+  assert.deepEqual(parseUserInput({ content: 'Biratnagar, Nepal' }), { isFireReport: true, locationName: 'Biratnagar, Nepal' });
+  assert.deepEqual(parseUserInput({ content: '  Smoke in Kathmandu  ' }), { isFireReport: true, locationName: 'Smoke in Kathmandu' });
+  assert.deepEqual(parseUserInput({ content: '', imageBase64: png }), { isFireReport: false, locationName: '' });
+  assert.deepEqual(parseUserInput({}), { isFireReport: false, locationName: '' });
+  assert.deepEqual(parseUserInput(), { isFireReport: false, locationName: '' });
 });
 
 test('location resolution uses explicit coordinates and unique geocoding results; ambiguity is not guessed', async () => {

@@ -1,55 +1,36 @@
-import OpenAI from 'openai';
 import { decodeCommunityImage, MAX_IMAGE_BYTES, normalizeCommunityImageUrl } from '../server/community-image.mjs';
 
 export class BridgeError extends Error {}
 const normalize = text => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const validPoint = (lat, lon) => Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lon) && Math.abs(lon) <= 180;
 
-export function createGroqAnalyzer({ apiKey, modelName = 'llama-3.1-8b-instant', generate, client } = {}) {
-  const groq = client || (generate ? null : new OpenAI({
-    apiKey: apiKey || process.env.GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1',
-  }));
-  return async ({ content, imageBase64 } = {}) => {
-    try {
-      const image = decodeCommunityImage(imageBase64);
-      const userText = content || (image ? 'Fire/smoke observation report.' : '');
-      let rawJson;
-      if (generate) {
-        const genResult = await generate({ content: userText, imageBase64, image });
-        rawJson = typeof genResult === 'string' ? genResult : genResult?.choices?.[0]?.message?.content;
-      } else {
-        const response = await groq.chat.completions.create({
-          model: modelName,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an AI assistant for a fire reporting system. Analyze the user\'s text. Extract the location if mentioned. Respond ONLY with a valid JSON object matching this schema: { "isFireReport": boolean, "locationName": string | null }',
-            },
-            {
-              role: 'user',
-              content: userText || 'Smoke/fire observation',
-            },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0,
-        });
-        rawJson = response?.choices?.[0]?.message?.content;
-      }
-      if (typeof rawJson !== 'string') throw new Error('Invalid model output');
-      const parsed = JSON.parse(rawJson);
-      if (typeof parsed?.isFireReport !== 'boolean' || !(parsed.locationName === null || (typeof parsed.locationName === 'string' && parsed.locationName.length <= 160))) {
-        throw new Error('Invalid model output');
-      }
-      return { isFireReport: parsed.isFireReport, locationName: parsed.locationName?.trim() || '' };
-    } catch (error) {
-      if (error instanceof BridgeError) throw error;
-      throw new BridgeError('AI analysis unavailable. Please check the API key.');
-    }
-  };
+export function parseUserInput({ content, imageBase64 } = {}) {
+  const text = (content || '').trim();
+  if (!text) {
+    return { isFireReport: false, locationName: '' };
+  }
+  // Just return the text as the location. Open-Meteo will figure it out.
+  return { isFireReport: true, locationName: text };
 }
 
-export const createGeminiAnalyzer = createGroqAnalyzer;
+// Aliases for compatibility
+export const createGroqAnalyzer = () => parseUserInput;
+export const createGeminiAnalyzer = () => parseUserInput;
+export function createGroqLocationParser(options) {
+  if (options?.generate) {
+    return async input => {
+      try {
+        const res = await options.generate({ content: input });
+        const parsed = typeof res === 'string' ? JSON.parse(res) : res;
+        return parsed?.locationName || input;
+      } catch {
+        return input;
+      }
+    };
+  }
+  return async input => (input || '').trim();
+}
+export const createGeminiLocationParser = createGroqLocationParser;
 
 export function explicitCoordinates(content) {
   const match = /\b(?:lat(?:itude)?)\s*[:=]?\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]+\s*(?:lon(?:gitude)?|lng)\s*[:=]?\s*(-?\d{1,3}(?:\.\d+)?)/i.exec(content)
@@ -59,23 +40,7 @@ export function explicitCoordinates(content) {
   return validPoint(lat, lon) ? { lat, lon } : null;
 }
 
-export function createGroqLocationParser(options) {
-  const analyze = createGroqAnalyzer(options);
-  return async input => {
-    try {
-      const result = await analyze({ content: `Location field supplied by the reporter: ${input}` });
-      if (!result.locationName) throw new BridgeError('Could not identify that location. Include the city and country, or enter latitude, longitude.');
-      return result.locationName;
-    } catch (error) {
-      if (error instanceof BridgeError) throw error;
-      throw new BridgeError('AI analysis unavailable. Please check the API key.');
-    }
-  };
-}
-
-export const createGeminiLocationParser = createGroqLocationParser;
-
-export async function resolveModalLocation(input, { parseLocation, resolveLocation = resolveReportLocation } = {}) {
+export async function resolveModalLocation(input, { parseLocation = async t => t, resolveLocation = resolveReportLocation } = {}) {
   const raw = input.trim();
   const pair = raw.replace(/^\((.*)\)$/, '$1').match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))$/);
   if (pair) {
@@ -85,9 +50,9 @@ export async function resolveModalLocation(input, { parseLocation, resolveLocati
   }
   const explicit = explicitCoordinates(raw);
   if (explicit) return { ...explicit, locationName: raw };
-  const name = await parseLocation(raw);
+  const name = parseLocation ? await parseLocation(raw) : raw;
   const point = await resolveLocation('', name);
-  if (!validPoint(point.lat, point.lon)) throw new BridgeError('That location could not be resolved uniquely. Include the city and country, or enter latitude, longitude.');
+  if (!validPoint(point.lat, point.lon)) throw new BridgeError("Could not find that location uniquely. Please try a major city name (e.g., 'Biratnagar, Nepal').");
   return point;
 }
 
@@ -184,7 +149,7 @@ export async function forwardDiscordReport(payload, { apiUrl = 'http://127.0.0.1
   }
 }
 
-export function createDiscordMessageHandler({ channelId, analyze, resolveLocation = resolveReportLocation, downloadImage = downloadReportImage, forward, log = () => {} }) {
+export function createDiscordMessageHandler({ channelId, analyze = parseUserInput, resolveLocation = resolveReportLocation, downloadImage = downloadReportImage, forward, log = () => {} }) {
   const inflight = new Set(), processed = new Set();
   const reply = async (message, content) => {
     try { await message.reply({ content, allowedMentions: { parse: [], repliedUser: false } }); }

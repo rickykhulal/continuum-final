@@ -38,13 +38,11 @@
     "perf": "node scripts/perf-probe.mjs"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "discord.js": "^14.28.1",
     "framer-motion": "^11.0.0",
     "maplibre-gl": "^6.18.0",
-    "openai": "^7.57.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "satellite.js": "^5.0.0",
